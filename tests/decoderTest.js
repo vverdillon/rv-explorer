@@ -720,6 +720,31 @@ function dec_zabha_amo_amocasb() {
     assertEq(inst.asm, 'amocas.b x6, x5, (x10)');
 }
 
+/*
+ * Zfh extension
+ */
+function dec_zfh_opfp_faddh() {
+    let inst = new Instruction('047372d3');
+    assertEq(inst.asm, 'fadd.h f5, f6, f7');
+    assertEq(inst.isa, 'Zfh');
+}
+
+function dec_zfh_madd_fmaddh() {
+    let inst = new Instruction('fcf3f1c3');
+    assertEq(inst.asm, 'fmadd.h f3, f7, f15, f31');
+}
+
+function dec_zfh_opfp_fcvtwh() {
+    let inst = new Instruction('c40372d3');
+    assertEq(inst.asm, 'fcvt.w.h x5, f6');
+}
+
+function dec_zfh_opfp_fcvtlh() {
+    let inst = new Instruction('c42372d3', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'fcvt.l.h x5, f6');
+    assertEq(inst.isa, 'RV64Zfh');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -818,6 +843,10 @@ batchTests('Decoder Tests', [
     ['Dec - Zacas    - AMO       - amocas.q', dec_zacas_amo_amocasq],
     ['Dec - Zabha    - AMO       - amoswap.b', dec_zabha_amo_amoswapb],
     ['Dec - Zabha    - AMO       - amocas.b', dec_zabha_amo_amocasb],
+    ['Dec - Zfh      - OP-FP     - fadd.h', dec_zfh_opfp_faddh],
+    ['Dec - Zfh      - MADD      - fmadd.h', dec_zfh_madd_fmaddh],
+    ['Dec - Zfh      - OP-FP     - fcvt.w.h', dec_zfh_opfp_fcvtwh],
+    ['Dec - Zfh      - OP-FP     - fcvt.l.h', dec_zfh_opfp_fcvtlh],
 ]);
 
 // Newline

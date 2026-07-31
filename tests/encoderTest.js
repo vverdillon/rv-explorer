@@ -667,6 +667,22 @@ function enc_zabha_amo_amoaddh() {
     assertEq(inst.isa, 'Zabha');
 }
 
+/*
+ * Zfh extension
+ */
+function enc_zfh_opfp_fsubh() {
+    let inst = new Instruction('fsub.h f5, f6, f7');
+    assertEq(inst.hex, '0c7372d3');
+    assertEq(inst.isa, 'Zfh');
+}
+
+function enc_zfh_opfp_fclassh() {
+    let inst = new Instruction('fclass.h x5, f6');
+    let instAbi = new Instruction('fclass.h t0, ft6');
+    assertEq(inst.hex, 'e40312d3');
+    assertEq(instAbi.hex, inst.hex);
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -759,6 +775,8 @@ batchTests('Encoder Tests', [
     ['Enc - Zawrs    - SYSTEM    - wrs.sto', enc_zawrs_system_wrssto],
     ['Enc - Zacas    - AMO       - amocas.d', enc_zacas_amo_amocasd],
     ['Enc - Zabha    - AMO       - amoadd.h', enc_zabha_amo_amoaddh],
+    ['Enc - Zfh      - OP-FP     - fsub.h', enc_zfh_opfp_fsubh],
+    ['Enc - Zfh      - OP-FP     - fclass.h', enc_zfh_opfp_fclassh],
 ]);
 
 // Newline
