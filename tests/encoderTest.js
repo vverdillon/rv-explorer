@@ -658,6 +658,15 @@ function enc_zacas_amo_amocasd() {
     assertEq(inst.isa, 'Zacas');
 }
 
+/*
+ * Zabha extension
+ */
+function enc_zabha_amo_amoaddh() {
+    let inst = new Instruction('amoadd.h x6, x5, (x10)');
+    assertEq(inst.hex, '0055132f');
+    assertEq(inst.isa, 'Zabha');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -749,6 +758,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zicond   - OP        - czero.nez', enc_zicond_op_czeronez],
     ['Enc - Zawrs    - SYSTEM    - wrs.sto', enc_zawrs_system_wrssto],
     ['Enc - Zacas    - AMO       - amocas.d', enc_zacas_amo_amocasd],
+    ['Enc - Zabha    - AMO       - amoadd.h', enc_zabha_amo_amoaddh],
 ]);
 
 // Newline

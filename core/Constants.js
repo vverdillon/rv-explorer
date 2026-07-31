@@ -462,6 +462,31 @@ export const ISA_Zacas = {
   'amocas.q': { isa: 'RV64Zacas', fmt: 'R-type', funct5: '00101', funct3: '100', opcode: OPCODE.AMO },
 }
 
+// Zabha (byte and halfword atomic memory operations) instruction set
+export const ISA_Zabha = {
+  'amoswap.b': { isa: 'Zabha', fmt: 'R-type', funct5: '00001', funct3: '000', opcode: OPCODE.AMO },
+  'amoadd.b':  { isa: 'Zabha', fmt: 'R-type', funct5: '00000', funct3: '000', opcode: OPCODE.AMO },
+  'amoxor.b':  { isa: 'Zabha', fmt: 'R-type', funct5: '00100', funct3: '000', opcode: OPCODE.AMO },
+  'amoand.b':  { isa: 'Zabha', fmt: 'R-type', funct5: '01100', funct3: '000', opcode: OPCODE.AMO },
+  'amoor.b':   { isa: 'Zabha', fmt: 'R-type', funct5: '01000', funct3: '000', opcode: OPCODE.AMO },
+  'amomin.b':  { isa: 'Zabha', fmt: 'R-type', funct5: '10000', funct3: '000', opcode: OPCODE.AMO },
+  'amomax.b':  { isa: 'Zabha', fmt: 'R-type', funct5: '10100', funct3: '000', opcode: OPCODE.AMO },
+  'amominu.b': { isa: 'Zabha', fmt: 'R-type', funct5: '11000', funct3: '000', opcode: OPCODE.AMO },
+  'amomaxu.b': { isa: 'Zabha', fmt: 'R-type', funct5: '11100', funct3: '000', opcode: OPCODE.AMO },
+  'amocas.b':  { isa: 'Zabha', fmt: 'R-type', funct5: '00101', funct3: '000', opcode: OPCODE.AMO },
+
+  'amoswap.h': { isa: 'Zabha', fmt: 'R-type', funct5: '00001', funct3: '001', opcode: OPCODE.AMO },
+  'amoadd.h':  { isa: 'Zabha', fmt: 'R-type', funct5: '00000', funct3: '001', opcode: OPCODE.AMO },
+  'amoxor.h':  { isa: 'Zabha', fmt: 'R-type', funct5: '00100', funct3: '001', opcode: OPCODE.AMO },
+  'amoand.h':  { isa: 'Zabha', fmt: 'R-type', funct5: '01100', funct3: '001', opcode: OPCODE.AMO },
+  'amoor.h':   { isa: 'Zabha', fmt: 'R-type', funct5: '01000', funct3: '001', opcode: OPCODE.AMO },
+  'amomin.h':  { isa: 'Zabha', fmt: 'R-type', funct5: '10000', funct3: '001', opcode: OPCODE.AMO },
+  'amomax.h':  { isa: 'Zabha', fmt: 'R-type', funct5: '10100', funct3: '001', opcode: OPCODE.AMO },
+  'amominu.h': { isa: 'Zabha', fmt: 'R-type', funct5: '11000', funct3: '001', opcode: OPCODE.AMO },
+  'amomaxu.h': { isa: 'Zabha', fmt: 'R-type', funct5: '11100', funct3: '001', opcode: OPCODE.AMO },
+  'amocas.h':  { isa: 'Zabha', fmt: 'R-type', funct5: '00101', funct3: '001', opcode: OPCODE.AMO },
+}
+
 // F instruction set
 export const ISA_F = {
   'flw':       { isa: 'RV32F', fmt: 'I-type', funct3: FP_WIDTH.S, opcode: OPCODE.LOAD_FP },
@@ -969,6 +994,29 @@ export const ISA_AMO = {
   [ISA_Zacas['amocas.w'].funct5 + ISA_Zacas['amocas.w'].funct3]: 'amocas.w',
   [ISA_Zacas['amocas.d'].funct5 + ISA_Zacas['amocas.d'].funct3]: 'amocas.d',
   [ISA_Zacas['amocas.q'].funct5 + ISA_Zacas['amocas.q'].funct3]: 'amocas.q',
+
+  // Zabha
+  [ISA_Zabha['amoswap.b'].funct5 + ISA_Zabha['amoswap.b'].funct3]: 'amoswap.b',
+  [ISA_Zabha['amoadd.b'].funct5  + ISA_Zabha['amoadd.b'].funct3]:  'amoadd.b',
+  [ISA_Zabha['amoxor.b'].funct5  + ISA_Zabha['amoxor.b'].funct3]:  'amoxor.b',
+  [ISA_Zabha['amoand.b'].funct5  + ISA_Zabha['amoand.b'].funct3]:  'amoand.b',
+  [ISA_Zabha['amoor.b'].funct5   + ISA_Zabha['amoor.b'].funct3]:   'amoor.b',
+  [ISA_Zabha['amomin.b'].funct5  + ISA_Zabha['amomin.b'].funct3]:  'amomin.b',
+  [ISA_Zabha['amomax.b'].funct5  + ISA_Zabha['amomax.b'].funct3]:  'amomax.b',
+  [ISA_Zabha['amominu.b'].funct5 + ISA_Zabha['amominu.b'].funct3]: 'amominu.b',
+  [ISA_Zabha['amomaxu.b'].funct5 + ISA_Zabha['amomaxu.b'].funct3]: 'amomaxu.b',
+  [ISA_Zabha['amocas.b'].funct5  + ISA_Zabha['amocas.b'].funct3]:  'amocas.b',
+
+  [ISA_Zabha['amoswap.h'].funct5 + ISA_Zabha['amoswap.h'].funct3]: 'amoswap.h',
+  [ISA_Zabha['amoadd.h'].funct5  + ISA_Zabha['amoadd.h'].funct3]:  'amoadd.h',
+  [ISA_Zabha['amoxor.h'].funct5  + ISA_Zabha['amoxor.h'].funct3]:  'amoxor.h',
+  [ISA_Zabha['amoand.h'].funct5  + ISA_Zabha['amoand.h'].funct3]:  'amoand.h',
+  [ISA_Zabha['amoor.h'].funct5   + ISA_Zabha['amoor.h'].funct3]:   'amoor.h',
+  [ISA_Zabha['amomin.h'].funct5  + ISA_Zabha['amomin.h'].funct3]:  'amomin.h',
+  [ISA_Zabha['amomax.h'].funct5  + ISA_Zabha['amomax.h'].funct3]:  'amomax.h',
+  [ISA_Zabha['amominu.h'].funct5 + ISA_Zabha['amominu.h'].funct3]: 'amominu.h',
+  [ISA_Zabha['amomaxu.h'].funct5 + ISA_Zabha['amomaxu.h'].funct3]: 'amomaxu.h',
+  [ISA_Zabha['amocas.h'].funct5  + ISA_Zabha['amocas.h'].funct3]:  'amocas.h',
 }
 
 export const ISA_LOAD_FP = {
@@ -1678,7 +1726,7 @@ export const ISA = Object.assign({},
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zicond,
-  ISA_Zawrs, ISA_Zacas,
+  ISA_Zawrs, ISA_Zacas, ISA_Zabha,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1701,5 +1749,6 @@ export const ISA_Subsets = {
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,
+  Zabha: ISA_Zabha,
   Priv: ISA_Priv
 }
