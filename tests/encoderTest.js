@@ -649,6 +649,15 @@ function enc_zawrs_system_wrssto() {
     assertEq(inst.isa, 'Zawrs');
 }
 
+/*
+ * Zacas extension
+ */
+function enc_zacas_amo_amocasd() {
+    let inst = new Instruction('amocas.d x6, x5, (x10)');
+    assertEq(inst.hex, '2855332f');
+    assertEq(inst.isa, 'Zacas');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -739,6 +748,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zbs      - OP-IMM    - binvi', enc_zbs_opimm_binvi],
     ['Enc - Zicond   - OP        - czero.nez', enc_zicond_op_czeronez],
     ['Enc - Zawrs    - SYSTEM    - wrs.sto', enc_zawrs_system_wrssto],
+    ['Enc - Zacas    - AMO       - amocas.d', enc_zacas_amo_amocasd],
 ]);
 
 // Newline

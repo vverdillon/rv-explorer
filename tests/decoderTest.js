@@ -687,6 +687,23 @@ function dec_zawrs_system_wrsnto() {
     assertEq(inst.isa, 'Zawrs');
 }
 
+/*
+ * Zacas extension
+ */
+function dec_zacas_amo_amocasw() {
+    let inst = new Instruction('2855232f');
+    let instAbi = new Instruction('2855232f', { ABI:true });
+    assertEq(inst.asm, 'amocas.w x6, x5, (x10)');
+    assertEq(instAbi.asm, 'amocas.w t1, t0, (a0)');
+    assertEq(inst.isa, 'Zacas');
+}
+
+function dec_zacas_amo_amocasq() {
+    let inst = new Instruction('2855432f', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'amocas.q x6, x5, (x10)');
+    assertEq(inst.isa, 'RV64Zacas');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -781,6 +798,8 @@ batchTests('Decoder Tests', [
     ['Dec - Zbs      - OP-IMM    - bexti', dec_zbs_opimm_bexti],
     ['Dec - Zicond   - OP        - czero.eqz', dec_zicond_op_czeroeqz],
     ['Dec - Zawrs    - SYSTEM    - wrs.nto', dec_zawrs_system_wrsnto],
+    ['Dec - Zacas    - AMO       - amocas.w', dec_zacas_amo_amocasw],
+    ['Dec - Zacas    - AMO       - amocas.q', dec_zacas_amo_amocasq],
 ]);
 
 // Newline

@@ -455,6 +455,13 @@ export const ISA_Zawrs = {
   'wrs.sto': { isa: 'Zawrs', fmt: 'I-type', funct12: '000000011101', funct3: '000', opcode: OPCODE.SYSTEM },
 }
 
+// Zacas (atomic compare-and-swap) instruction set
+export const ISA_Zacas = {
+  'amocas.w': { isa: 'Zacas',    fmt: 'R-type', funct5: '00101', funct3: '010', opcode: OPCODE.AMO },
+  'amocas.d': { isa: 'Zacas',    fmt: 'R-type', funct5: '00101', funct3: '011', opcode: OPCODE.AMO },
+  'amocas.q': { isa: 'RV64Zacas', fmt: 'R-type', funct5: '00101', funct3: '100', opcode: OPCODE.AMO },
+}
+
 // F instruction set
 export const ISA_F = {
   'flw':       { isa: 'RV32F', fmt: 'I-type', funct3: FP_WIDTH.S, opcode: OPCODE.LOAD_FP },
@@ -957,6 +964,11 @@ export const ISA_AMO = {
   [ISA_A['amomax.q'].funct5    + ISA_A['amomax.q'].funct3]:  'amomax.q',
   [ISA_A['amominu.q'].funct5   + ISA_A['amominu.q'].funct3]: 'amominu.q',
   [ISA_A['amomaxu.q'].funct5   + ISA_A['amomaxu.q'].funct3]: 'amomaxu.q',
+
+  // Zacas
+  [ISA_Zacas['amocas.w'].funct5 + ISA_Zacas['amocas.w'].funct3]: 'amocas.w',
+  [ISA_Zacas['amocas.d'].funct5 + ISA_Zacas['amocas.d'].funct3]: 'amocas.d',
+  [ISA_Zacas['amocas.q'].funct5 + ISA_Zacas['amocas.q'].funct3]: 'amocas.q',
 }
 
 export const ISA_LOAD_FP = {
@@ -1666,7 +1678,7 @@ export const ISA = Object.assign({},
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zicond,
-  ISA_Zawrs,
+  ISA_Zawrs, ISA_Zacas,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1688,5 +1700,6 @@ export const ISA_Subsets = {
   Zbs: ISA_Zbs,
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
+  Zacas: ISA_Zacas,
   Priv: ISA_Priv
 }
