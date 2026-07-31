@@ -613,6 +613,15 @@ function enc_zbb_opimm_ctz() {
     assertEq(inst.hex, '60131293');
 }
 
+/*
+ * Zbc extension
+ */
+function enc_zbc_op_clmul() {
+    let inst = new Instruction('clmul x5, x6, x7');
+    assertEq(inst.hex, '0a7312b3');
+    assertEq(inst.isa, 'Zbc');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -699,6 +708,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zba      - OP-32     - sh3add.uw', enc_zba_op32_sh3adduw],
     ['Enc - Zbb      - OP        - orn', enc_zbb_op_orn],
     ['Enc - Zbb      - OP-IMM    - ctz', enc_zbb_opimm_ctz],
+    ['Enc - Zbc      - OP        - clmul', enc_zbc_op_clmul],
 ]);
 
 // Newline

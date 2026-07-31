@@ -646,6 +646,15 @@ function dec_zbb_opimm_rev8() {
     assertEq(inst.asm, 'rev8 x5, x6');
 }
 
+/*
+ * Zbc extension
+ */
+function dec_zbc_op_clmulh() {
+    let inst = new Instruction('0a7332b3');
+    assertEq(inst.asm, 'clmulh x5, x6, x7');
+    assertEq(inst.isa, 'Zbc');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -735,6 +744,7 @@ batchTests('Decoder Tests', [
     ['Dec - Zbb      - OP        - rol', dec_zbb_op_rol],
     ['Dec - Zbb      - OP-IMM    - clz', dec_zbb_opimm_clz],
     ['Dec - Zbb      - OP-IMM    - rev8', dec_zbb_opimm_rev8],
+    ['Dec - Zbc      - OP        - clmulh', dec_zbc_op_clmulh],
 ]);
 
 // Newline

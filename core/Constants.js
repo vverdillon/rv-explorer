@@ -384,6 +384,13 @@ export const ISA_Zbb = {
   cpopw:  { isa: 'RV64Zbb', fmt: 'I-type', funct12: '011000000010', funct3: '001', opcode: OPCODE.OP_IMM_32 },
 }
 
+// Zbc (carry-less multiplication) instruction set
+export const ISA_Zbc = {
+  clmul:  { isa: 'Zbc', fmt: 'R-type', funct7: '0000101', funct3: '001', opcode: OPCODE.OP },
+  clmulh: { isa: 'Zbc', fmt: 'R-type', funct7: '0000101', funct3: '011', opcode: OPCODE.OP },
+  clmulr: { isa: 'Zbc', fmt: 'R-type', funct7: '0000101', funct3: '010', opcode: OPCODE.OP },
+}
+
 // A instruction set
 export const ISA_A = {
   'lr.w':      { isa: 'RV32A', fmt: 'R-type', funct5: '00010', funct3: '010', opcode: OPCODE.AMO },
@@ -697,6 +704,10 @@ export const ISA_OP = {
   [ISA_Zbb['minu'].funct7 + ISA_Zbb['minu'].funct3]: 'minu',
   [ISA_Zbb['rol'].funct7  + ISA_Zbb['rol'].funct3]:  'rol',
   [ISA_Zbb['ror'].funct7  + ISA_Zbb['ror'].funct3]:  'ror',
+  // Zbc
+  [ISA_Zbc['clmul'].funct7  + ISA_Zbc['clmul'].funct3]:  'clmul',
+  [ISA_Zbc['clmulh'].funct7 + ISA_Zbc['clmulh'].funct3]: 'clmulh',
+  [ISA_Zbc['clmulr'].funct7 + ISA_Zbc['clmulr'].funct3]: 'clmulr',
 }
 
 export const ISA_OP_32 = {
@@ -1615,7 +1626,7 @@ export const ISA = Object.assign({},
   ISA_RV32I, ISA_RV64I, ISA_RV128I,
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
-  ISA_Zba, ISA_Zbb,
+  ISA_Zba, ISA_Zbb, ISA_Zbc,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1633,5 +1644,6 @@ export const ISA_Subsets = {
   C: ISA_C,
   Zba: ISA_Zba,
   Zbb: ISA_Zbb,
+  Zbc: ISA_Zbc,
   Priv: ISA_Priv
 }
