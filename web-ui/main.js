@@ -552,3 +552,29 @@ for (let ISA_Type in ISA_Subsets) {
   isaSideBar.appendChild(isaSet);
 }
 isaSideBar.style.display = 'initial';
+
+// Filter ISA extensions / instructions in the sidebar
+const isaSearchInput = document.getElementById('isa-search-input');
+isaSearchInput.addEventListener('input', () => {
+  const query = isaSearchInput.value.trim().toLowerCase();
+
+  for (const isaSet of isaSideBar.children) {
+    const summary = isaSet.querySelector('summary');
+    if (!summary) {
+      // The "Unratified / Draft Extensions" heading isn't a <details> set
+      continue;
+    }
+    const extMatches = summary.textContent.toLowerCase().includes(query);
+    let anyInstMatches = false;
+
+    for (const instNode of isaSet.querySelectorAll('button')) {
+      const instMatches = extMatches || instNode.textContent.toLowerCase().includes(query);
+      instNode.classList.toggle('filtered-out', !instMatches);
+      anyInstMatches ||= instMatches;
+    }
+
+    // Only hide extensions with no match; leave open/closed state as the
+    // user left it instead of forcing matches open.
+    isaSet.classList.toggle('filtered-out', !anyInstMatches);
+  }
+});

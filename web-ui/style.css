@@ -56,6 +56,34 @@
     background-color: var(--color-hl);
 }
 
+:root {
+    font-size: 14px;
+}
+
+@media (max-width: 480px) {
+    :root {
+        font-size: 16px;
+    }
+}
+
+@media (min-width: 900px) {
+    :root {
+        font-size: 16px;
+    }
+}
+
+@media (min-width: 1200px) {
+    :root {
+        font-size: 18px;
+    }
+}
+
+@media (min-width: 1400px) {
+    :root {
+        font-size: 22px;
+    }
+}
+
 /* Body */
 body {
     font-size: 1rem; /* font size for serach input and displayed result*/
@@ -75,7 +103,7 @@ body {
 
 #workspace{
     display: grid;
-    grid-template-columns: 15ch 5fr;
+    grid-template-columns: 18ch 5fr;
 
     color: var(--color-fg);
     background-color: var(--color-bg);
@@ -87,6 +115,7 @@ body {
     max-width: fit-content;
     min-height: 12ch;
     padding: 5ch 1ch 5ch 1.25ch;
+    grid-template-rows: 5.5ch 1fr;
 }
 
 #isa-sets-container{
@@ -107,18 +136,31 @@ body {
     position: relative;
     display: block;
     color: var(--color-fg);
+    font-size: 0.8em;
 }
 
 #search-modal-results {
     display: grid;
     grid-template-rows: minmax(4ch, 12vh) minmax(30ch, 10fr);
     gap: 1ch;
-    padding-right: 15ch;  /* center itself because of sidebar */
+    padding-right: 6ch;  /* center itself because of sidebar */
+}
+
+@media (min-width: 1200px) {
+    #search-modal-results {
+        padding-right: 8ch;  /* center itself because of sidebar */
+    }
+}
+
+@media (min-width: 1400px) {
+    #search-modal-results {
+        padding-right: 10ch;  /* center itself because of sidebar */
+    }
 }
 
 /* Page title */
 #title-container{
-    margin: 1ch 1ch 0ch 1ch;
+    margin: 1ch 0ch 0ch 1ch;
     display: grid;
 }
 #title-box{
@@ -127,7 +169,7 @@ body {
 
 /* Page copyright */
 #copyright-container{
-    margin: 1ch 1ch 1ch 1ch;
+    margin: 1ch 0ch 1ch 1ch;
     display: grid;
 }
 #copyright-box{
@@ -143,6 +185,13 @@ body {
 
     padding: 0% 0.25%;
     background-color: var(--color-bg) ;
+}
+
+@media (max-width: 480px) {
+    .offset-label{
+        font-size: 0.65rem;
+        transform: translate(10%, -60%);
+    }
 }
 
 /* Search bar */
@@ -318,6 +367,7 @@ body {
     height: fit-content;
     width: max-content;
     transition: background-color 400ms linear;
+    letter-spacing: 0.10rem;
 }
 
 /* No separate between every 16 bits when the screen is wide */
@@ -426,7 +476,6 @@ body {
 
     /* --bit-color defined dynamically by script */
     color: var(--bit-color);
-    margin-right: 0.12rem;
 }
 
 /* Binary tooltip conversion */
@@ -494,10 +543,6 @@ body {
 /* CSS populate button and tooltip */
 .populate-button {
     background: url("./assets/populate-icon.svg") no-repeat center;
-}
-
-.populate-tooltip {
-    width: 5.75rem;
 }
 
 /* Parameter container */
