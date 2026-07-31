@@ -655,6 +655,20 @@ function dec_zbc_op_clmulh() {
     assertEq(inst.isa, 'Zbc');
 }
 
+/*
+ * Zbs extension
+ */
+function dec_zbs_op_bclr() {
+    let inst = new Instruction('487312b3');
+    assertEq(inst.asm, 'bclr x5, x6, x7');
+    assertEq(inst.isa, 'Zbs');
+}
+
+function dec_zbs_opimm_bexti() {
+    let inst = new Instruction('48f35293');
+    assertEq(inst.asm, 'bexti x5, x6, 15');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -745,6 +759,8 @@ batchTests('Decoder Tests', [
     ['Dec - Zbb      - OP-IMM    - clz', dec_zbb_opimm_clz],
     ['Dec - Zbb      - OP-IMM    - rev8', dec_zbb_opimm_rev8],
     ['Dec - Zbc      - OP        - clmulh', dec_zbc_op_clmulh],
+    ['Dec - Zbs      - OP        - bclr', dec_zbs_op_bclr],
+    ['Dec - Zbs      - OP-IMM    - bexti', dec_zbs_opimm_bexti],
 ]);
 
 // Newline

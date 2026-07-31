@@ -622,6 +622,15 @@ function enc_zbc_op_clmul() {
     assertEq(inst.isa, 'Zbc');
 }
 
+/*
+ * Zbs extension
+ */
+function enc_zbs_opimm_binvi() {
+    let inst = new Instruction('binvi x5, x6, 15');
+    assertEq(inst.hex, '68f31293');
+    assertEq(inst.isa, 'Zbs');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -709,6 +718,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zbb      - OP        - orn', enc_zbb_op_orn],
     ['Enc - Zbb      - OP-IMM    - ctz', enc_zbb_opimm_ctz],
     ['Enc - Zbc      - OP        - clmul', enc_zbc_op_clmul],
+    ['Enc - Zbs      - OP-IMM    - binvi', enc_zbs_opimm_binvi],
 ]);
 
 // Newline

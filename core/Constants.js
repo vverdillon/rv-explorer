@@ -391,6 +391,19 @@ export const ISA_Zbc = {
   clmulr: { isa: 'Zbc', fmt: 'R-type', funct7: '0000101', funct3: '010', opcode: OPCODE.OP },
 }
 
+// Zbs (single-bit instructions) instruction set
+export const ISA_Zbs = {
+  bclr:   { isa: 'Zbs', fmt: 'R-type', funct7: '0100100', funct3: '001', opcode: OPCODE.OP },
+  bext:   { isa: 'Zbs', fmt: 'R-type', funct7: '0100100', funct3: '101', opcode: OPCODE.OP },
+  binv:   { isa: 'Zbs', fmt: 'R-type', funct7: '0110100', funct3: '001', opcode: OPCODE.OP },
+  bset:   { isa: 'Zbs', fmt: 'R-type', funct7: '0010100', funct3: '001', opcode: OPCODE.OP },
+
+  bclri:  { isa: 'Zbs', fmt: 'I-type', funct6: '010010', funct3: '001', opcode: OPCODE.OP_IMM },
+  bexti:  { isa: 'Zbs', fmt: 'I-type', funct6: '010010', funct3: '101', opcode: OPCODE.OP_IMM },
+  binvi:  { isa: 'Zbs', fmt: 'I-type', funct6: '011010', funct3: '001', opcode: OPCODE.OP_IMM },
+  bseti:  { isa: 'Zbs', fmt: 'I-type', funct6: '001010', funct3: '001', opcode: OPCODE.OP_IMM },
+}
+
 // A instruction set
 export const ISA_A = {
   'lr.w':      { isa: 'RV32A', fmt: 'R-type', funct5: '00010', funct3: '010', opcode: OPCODE.AMO },
@@ -708,6 +721,11 @@ export const ISA_OP = {
   [ISA_Zbc['clmul'].funct7  + ISA_Zbc['clmul'].funct3]:  'clmul',
   [ISA_Zbc['clmulh'].funct7 + ISA_Zbc['clmulh'].funct3]: 'clmulh',
   [ISA_Zbc['clmulr'].funct7 + ISA_Zbc['clmulr'].funct3]: 'clmulr',
+  // Zbs
+  [ISA_Zbs['bclr'].funct7 + ISA_Zbs['bclr'].funct3]: 'bclr',
+  [ISA_Zbs['bext'].funct7 + ISA_Zbs['bext'].funct3]: 'bext',
+  [ISA_Zbs['binv'].funct7 + ISA_Zbs['binv'].funct3]: 'binv',
+  [ISA_Zbs['bset'].funct7 + ISA_Zbs['bset'].funct3]: 'bset',
 }
 
 export const ISA_OP_32 = {
@@ -795,6 +813,9 @@ export const ISA_OP_IMM = {
   [ISA_RV32I['slli'].funct3]: {
     [shamt6Prefix(ISA_RV32I['slli'])]:                 'slli',
     [shamt6Prefix(ISA_RV32I['slli']).slice(0, 5) + '1']: 'slli',
+    [ISA_Zbs['bclri'].funct6]:                          'bclri',
+    [ISA_Zbs['binvi'].funct6]:                          'binvi',
+    [ISA_Zbs['bseti'].funct6]:                          'bseti',
     [ISA_Zbb['clz'].funct12.substring(0, 6)]: {
       [ISA_Zbb['clz'].funct12.substring(6)]:     'clz',
       [ISA_Zbb['ctz'].funct12.substring(6)]:     'ctz',
@@ -808,6 +829,7 @@ export const ISA_OP_IMM = {
     [shamt6Prefix(ISA_RV32I['srli']).slice(0, 5) + '1']: 'srli',
     [shamt6Prefix(ISA_RV32I['srai'])]:                 'srai',
     [shamt6Prefix(ISA_RV32I['srai']).slice(0, 5) + '1']: 'srai',
+    [ISA_Zbs['bexti'].funct6]:          'bexti',
     [ISA_Zbb['rori'].funct6]:           'rori',
     [ISA_Zbb['orc.b'].funct12.substring(0, 6)]: {
       [ISA_Zbb['orc.b'].funct12.substring(6)]: 'orc.b',
@@ -1626,7 +1648,7 @@ export const ISA = Object.assign({},
   ISA_RV32I, ISA_RV64I, ISA_RV128I,
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
-  ISA_Zba, ISA_Zbb, ISA_Zbc,
+  ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1645,5 +1667,6 @@ export const ISA_Subsets = {
   Zba: ISA_Zba,
   Zbb: ISA_Zbb,
   Zbc: ISA_Zbc,
+  Zbs: ISA_Zbs,
   Priv: ISA_Priv
 }
