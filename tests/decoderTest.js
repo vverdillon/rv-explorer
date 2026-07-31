@@ -600,6 +600,26 @@ function dec_rv32c_c2cr_cadd() {
 }
 
 /*
+ * Zba extension
+ */
+function dec_zba_op_sh2add() {
+    let inst = new Instruction('207342b3');
+    assertEq(inst.asm, 'sh2add x5, x6, x7');
+    assertEq(inst.isa, 'Zba');
+}
+
+function dec_zba_op32_adduw() {
+    let inst = new Instruction('087302bb', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'add.uw x5, x6, x7');
+    assertEq(inst.isa, 'RV64Zba');
+}
+
+function dec_zba_opimm32_slliuw() {
+    let inst = new Instruction('0943129b', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'slli.uw x5, x6, 20');
+}
+
+/*
  * Execute tests
  */
 batchTests('Decoder Tests', [
@@ -684,6 +704,9 @@ batchTests('Decoder Tests', [
     ['Dec - RV32C    - C2-CR     - c.mv', dec_rv32c_c2cr_cmv],
     ['Dec - RV32C    - C2-CR     - c.ebreak', dec_rv32c_c2cr_cebreak],
     ['Dec - RV32C    - C2-CR     - c.add', dec_rv32c_c2cr_cadd],
+    ['Dec - Zba      - OP        - sh2add', dec_zba_op_sh2add],
+    ['Dec - Zba      - OP-32     - add.uw', dec_zba_op32_adduw],
+    ['Dec - Zba      - OP-IMM-32 - slli.uw', dec_zba_opimm32_slliuw],
 ]);
 
 // Newline

@@ -87,6 +87,9 @@ export const FIELDS = {
   i_shamt_5_0:  { pos: [25, 6], name: 'shamt[5:0]' },
   i_shamt:      { pos: [24, 5], name: 'shamt[4:0]' },
 
+  // I-type: bit-manipulation instructions with a fixed 6-bit prefix (e.g. Zba/Zbb/Zbs)
+  i_funct6:     { pos: [31, 6], name: 'funct6' },
+
   // I-type: trap instructions
   i_funct12: { pos: [31, 12], name: 'funct12' },
 
@@ -328,6 +331,26 @@ export const ISA_M = {
   divud:  { isa: 'RV128M', fmt: 'R-type', funct7: '0000001', funct3: '101', opcode: OPCODE.OP_64 },
   remd:   { isa: 'RV128M', fmt: 'R-type', funct7: '0000001', funct3: '110', opcode: OPCODE.OP_64 },
   remud:  { isa: 'RV128M', fmt: 'R-type', funct7: '0000001', funct3: '111', opcode: OPCODE.OP_64 },
+}
+
+// Zba (address generation) instruction set
+export const ISA_Zba = {
+  'sh1add':    { isa: 'Zba',     fmt: 'R-type', funct7: '0010000', funct3: '010', opcode: OPCODE.OP },
+  'sh2add':    { isa: 'Zba',     fmt: 'R-type', funct7: '0010000', funct3: '100', opcode: OPCODE.OP },
+  'sh3add':    { isa: 'Zba',     fmt: 'R-type', funct7: '0010000', funct3: '110', opcode: OPCODE.OP },
+
+  'add.uw':    { isa: 'RV64Zba',  fmt: 'R-type', funct7: '0000100', funct3: '000', opcode: OPCODE.OP_32 },
+  'sh1add.uw': { isa: 'RV64Zba',  fmt: 'R-type', funct7: '0010000', funct3: '010', opcode: OPCODE.OP_32 },
+  'sh2add.uw': { isa: 'RV64Zba',  fmt: 'R-type', funct7: '0010000', funct3: '100', opcode: OPCODE.OP_32 },
+  'sh3add.uw': { isa: 'RV64Zba',  fmt: 'R-type', funct7: '0010000', funct3: '110', opcode: OPCODE.OP_32 },
+  'slli.uw':   { isa: 'RV64Zba',  fmt: 'I-type', funct6: '000010', funct3: '001', opcode: OPCODE.OP_IMM_32 },
+
+  'add.ud':    { isa: 'RV128Zba', fmt: 'R-type', funct7: '0000100', funct3: '001', opcode: OPCODE.OP_64 },
+  'sh1add.ud': { isa: 'RV128Zba', fmt: 'R-type', funct7: '0010000', funct3: '011', opcode: OPCODE.OP_64 },
+  'sh2add.ud': { isa: 'RV128Zba', fmt: 'R-type', funct7: '0010000', funct3: '101', opcode: OPCODE.OP_64 },
+  'sh3add.ud': { isa: 'RV128Zba', fmt: 'R-type', funct7: '0010000', funct3: '111', opcode: OPCODE.OP_64 },
+  'sh4add.ud': { isa: 'RV128Zba', fmt: 'R-type', funct7: '0010001', funct3: '111', opcode: OPCODE.OP_64 },
+  'slli.ud':   { isa: 'RV128Zba', fmt: 'I-type', funct6: '000010', funct3: '010', opcode: OPCODE.OP_IMM_64 },
 }
 
 // A instruction set
@@ -629,6 +652,10 @@ export const ISA_OP = {
   [ISA_M['divu'].funct7   + ISA_M['divu'].funct3]:    'divu',
   [ISA_M['rem'].funct7    + ISA_M['rem'].funct3]:     'rem',
   [ISA_M['remu'].funct7   + ISA_M['remu'].funct3]:    'remu',
+  // Zba
+  [ISA_Zba['sh1add'].funct7 + ISA_Zba['sh1add'].funct3]: 'sh1add',
+  [ISA_Zba['sh2add'].funct7 + ISA_Zba['sh2add'].funct3]: 'sh2add',
+  [ISA_Zba['sh3add'].funct7 + ISA_Zba['sh3add'].funct3]: 'sh3add',
 }
 
 export const ISA_OP_32 = {
@@ -644,6 +671,11 @@ export const ISA_OP_32 = {
   [ISA_M['divuw'].funct7 + ISA_M['divuw'].funct3]:  'divuw',
   [ISA_M['remw'].funct7  + ISA_M['remw'].funct3]:   'remw',
   [ISA_M['remuw'].funct7 + ISA_M['remuw'].funct3]:  'remuw',
+  // Zba
+  [ISA_Zba['add.uw'].funct7    + ISA_Zba['add.uw'].funct3]:    'add.uw',
+  [ISA_Zba['sh1add.uw'].funct7 + ISA_Zba['sh1add.uw'].funct3]: 'sh1add.uw',
+  [ISA_Zba['sh2add.uw'].funct7 + ISA_Zba['sh2add.uw'].funct3]: 'sh2add.uw',
+  [ISA_Zba['sh3add.uw'].funct7 + ISA_Zba['sh3add.uw'].funct3]: 'sh3add.uw',
 }
 
 export const ISA_OP_64 = {
@@ -659,6 +691,12 @@ export const ISA_OP_64 = {
   [ISA_M['divud'].funct7 + ISA_M['divud'].funct3]:  'divud',
   [ISA_M['remd'].funct7  + ISA_M['remd'].funct3]:   'remd',
   [ISA_M['remud'].funct7 + ISA_M['remud'].funct3]:  'remud',
+  // Zba
+  [ISA_Zba['add.ud'].funct7    + ISA_Zba['add.ud'].funct3]:    'add.ud',
+  [ISA_Zba['sh1add.ud'].funct7 + ISA_Zba['sh1add.ud'].funct3]: 'sh1add.ud',
+  [ISA_Zba['sh2add.ud'].funct7 + ISA_Zba['sh2add.ud'].funct3]: 'sh2add.ud',
+  [ISA_Zba['sh3add.ud'].funct7 + ISA_Zba['sh3add.ud'].funct3]: 'sh3add.ud',
+  [ISA_Zba['sh4add.ud'].funct7 + ISA_Zba['sh4add.ud'].funct3]: 'sh4add.ud',
 }
 
 export const ISA_LOAD = {
@@ -680,6 +718,13 @@ export const ISA_STORE = {
   [ISA_RV128I['sq'].funct3]:  'sq',
 }
 
+// Builds the fixed 6-bit prefix (imm[11:6]) of a shift-immediate instruction:
+// derived either from a `funct6` bit-manipulation instruction (used as-is),
+// or from a base ISA instruction's single-bit `shtyp` toggle
+function shamt6Prefix(inst) {
+  return inst.funct6 ?? ('0' + inst.shtyp + '0000');
+}
+
 export const ISA_OP_IMM = {
   [ISA_RV32I['addi'].funct3]:   'addi',
   [ISA_RV32I['slti'].funct3]:   'slti',
@@ -688,21 +733,35 @@ export const ISA_OP_IMM = {
   [ISA_RV32I['ori'].funct3]:    'ori',
   [ISA_RV32I['andi'].funct3]:   'andi',
 
-  [ISA_RV32I['slli'].funct3]:   'slli',
+  // NOTE: `slli`/`srli`/`srai` also live on this shared opcode for RV128I, where
+  // the shift amount can be 7 bits wide (imm[26:20]) - i.e. imm[26] can be part
+  // of a genuine (non-zero) shamt value rather than always being a fixed 0, so
+  // both possible values of imm[26] are listed here for those three mnemonics
+  [ISA_RV32I['slli'].funct3]: {
+    [shamt6Prefix(ISA_RV32I['slli'])]:                 'slli',
+    [shamt6Prefix(ISA_RV32I['slli']).slice(0, 5) + '1']: 'slli',
+  },
   [ISA_RV32I['srli'].funct3]: {
-    [ISA_RV32I['srli'].shtyp]:  'srli',
-    [ISA_RV32I['srai'].shtyp]:  'srai',
+    [shamt6Prefix(ISA_RV32I['srli'])]:                 'srli',
+    [shamt6Prefix(ISA_RV32I['srli']).slice(0, 5) + '1']: 'srli',
+    [shamt6Prefix(ISA_RV32I['srai'])]:                 'srai',
+    [shamt6Prefix(ISA_RV32I['srai']).slice(0, 5) + '1']: 'srai',
   }
 }
 
 export const ISA_OP_IMM_32 = {
   [ISA_RV64I['addiw'].funct3]:  'addiw',
 
-  [ISA_RV64I['slliw'].funct3]:  'slliw',
+  [ISA_RV64I['slliw'].funct3]: {
+    [shamt6Prefix(ISA_RV64I['slliw'])]:      'slliw',
+    [ISA_Zba['slli.uw'].funct6]:              'slli.uw',
+  },
+  // roriw shares this funct3 with srliw/sraiw; keyed by the full 7-bit funct7
+  // prefix (bits[31:25]) since roriw's fixed prefix does not fit in 6 bits
   [ISA_RV64I['srliw'].funct3]: {
-    [ISA_RV64I['srliw'].shtyp]: 'srliw',
-    [ISA_RV64I['sraiw'].shtyp]: 'sraiw',
-  }
+    ['0' + ISA_RV64I['srliw'].shtyp + '00000']: 'srliw',
+    ['0' + ISA_RV64I['sraiw'].shtyp + '00000']: 'sraiw',
+  },
 }
 
 export const ISA_OP_IMM_64 = {
@@ -710,9 +769,10 @@ export const ISA_OP_IMM_64 = {
 
   [ISA_RV128I['sllid'].funct3]:   'sllid',
   [ISA_RV128I['srlid'].funct3]: {
-    [ISA_RV128I['srlid'].shtyp]:  'srlid',
-    [ISA_RV128I['sraid'].shtyp]:  'sraid',
-  }
+    [shamt6Prefix(ISA_RV128I['srlid'])]: 'srlid',
+    [shamt6Prefix(ISA_RV128I['sraid'])]: 'sraid',
+  },
+  [ISA_Zba['slli.ud'].funct3]:    'slli.ud',
 }
 
 export const ISA_BRANCH = {
@@ -1490,6 +1550,7 @@ export const ISA = Object.assign({},
   ISA_RV32I, ISA_RV64I, ISA_RV128I,
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
+  ISA_Zba,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1505,5 +1566,6 @@ export const ISA_Subsets = {
   D: ISA_D,
   Q: ISA_Q,
   C: ISA_C,
+  Zba: ISA_Zba,
   Priv: ISA_Priv
 }

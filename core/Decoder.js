@@ -480,36 +480,47 @@ export class Decoder {
       rd = fields['rd'];
 
     // Find instruction - check opcode for RV32I vs RV64I
-    let opcodeName;
+    let opcodeName, table;
     const op_imm_32 = this.#opcode === OPCODE.OP_IMM_32;
     const op_imm_64 = this.#opcode === OPCODE.OP_IMM_64;
     if(op_imm_64) {
       // RV128I double-word-sized instructions
-      this.#mne = ISA_OP_IMM_64[funct3];
+      table = ISA_OP_IMM_64[funct3];
       opcodeName = "OP-IMM-64";
     } else if(op_imm_32) {
       // RV64I word-sized instructions
-      this.#mne = ISA_OP_IMM_32[funct3];
+      table = ISA_OP_IMM_32[funct3];
       opcodeName = "OP-IMM-32";
     } else {
       // All other OP-IMM instructions
-      this.#mne = ISA_OP_IMM[funct3];
+      table = ISA_OP_IMM[funct3];
       opcodeName = "OP-IMM";
     }
-    if (this.#mne === undefined) {
+    if (table === undefined) {
       throw `Detected ${opcodeName} instruction but invalid funct3 field`;
     }
 
-    // Shift instructions
-    let shift;
-    if (typeof this.#mne !== 'string') {
-      // Right shift instructions
-      shift = true;
-      this.#mne = this.#mne[fields['shtyp']];
+    if (typeof table === 'string') {
+      this.#mne = table;
     } else {
-      // Only other case of immediate shift
-      shift = (funct3 === ISA['slli'].funct3);
+      // Instructions sharing a funct3 are disambiguated by a fixed-width prefix
+      // of imm[11:0] (width implied by the table's own key length), possibly
+      // nested one level further for instructions sharing that same prefix too
+      const width = Object.keys(table)[0].length;
+      let entry = table[imm.substring(0, width)];
+      if (entry === undefined) {
+        throw `Detected ${opcodeName} instruction but invalid funct6/funct7 field`;
+      }
+      if (typeof entry !== 'string') {
+        const width2 = Object.keys(entry)[0].length;
+        entry = entry[imm.substring(width, width + width2)];
+        if (entry === undefined) {
+          throw `Detected ${opcodeName} instruction but invalid funct12 field`;
+        }
+      }
+      this.#mne = entry;
     }
+    const inst = ISA[this.#mne];
 
     // Convert fields to string representations
     const src = decReg(rs1),
@@ -522,6 +533,53 @@ export class Decoder {
       rd:     new Frag(FRAG.RD, dest, rd, FIELDS.rd.name),
       rs1:    new Frag(FRAG.RS1, src, rs1, FIELDS.rs1.name),
     };
+
+    if (inst.funct12 !== undefined) {
+      // Fully-fixed immediate instructions (clz, ctz, cpop, sext.b/h, orc.b, rev8, ...)
+      //   imm[11:0] carries no user-supplied value; rd/rs1 are the only operands
+      f['imm'] = new Frag(FRAG.OPC, this.#mne, imm, FIELDS.i_funct12.name);
+
+      this.asmFrags.push(f['opcode'], f['rd'], f['rs1']);
+      this.binFrags.push(f['imm'], f['rs1'], f['funct3'], f['rd'], f['opcode']);
+      return;
+
+    } else if (inst.funct6 !== undefined) {
+      // Bit-manipulation shift-amount instructions (Zba/Zbb/Zbs): fixed 6-bit
+      //   prefix (imm[11:6]) plus a 6-bit shift amount (imm[5:0])
+      const funct6 = imm.substring(0, 6);
+      const shamtBits = imm.substring(6);
+      if (funct6 !== inst.funct6) {
+        throw `Detected ${this.#mne} instruction but invalid funct6 field`;
+      }
+      const shamt = decImm(shamtBits, false);
+
+      f['imm'] = new Frag(FRAG.IMM, shamt, shamtBits, FIELDS.i_shamt_5_0.name);
+      f['shift'] = new Frag(FRAG.OPC, this.#mne, funct6, FIELDS.i_funct6.name);
+
+      this.asmFrags.push(f['opcode'], f['rd'], f['rs1'], f['imm']);
+      this.binFrags.push(f['shift'], f['imm'], f['rs1'], f['funct3'], f['rd'], f['opcode']);
+      return;
+
+    } else if (inst.funct7 !== undefined) {
+      // Bit-manipulation word shift-amount instructions (roriw): fixed 7-bit
+      //   prefix (imm[11:5]) plus a 5-bit shift amount (imm[4:0])
+      const funct7 = imm.substring(0, 7);
+      const shamtBits = imm.substring(7);
+      if (funct7 !== inst.funct7) {
+        throw `Detected ${this.#mne} instruction but invalid funct7 field`;
+      }
+      const shamt = decImm(shamtBits, false);
+
+      f['imm'] = new Frag(FRAG.IMM, shamt, shamtBits, FIELDS.i_shamt.name);
+      f['shift'] = new Frag(FRAG.OPC, this.#mne, funct7, FIELDS.r_funct7.name);
+
+      this.asmFrags.push(f['opcode'], f['rd'], f['rs1'], f['imm']);
+      this.binFrags.push(f['shift'], f['imm'], f['rs1'], f['funct3'], f['rd'], f['opcode']);
+      return;
+    }
+
+    // Shift instructions
+    const shift = (inst.shtyp !== undefined);
 
     if (shift) {
       const shtyp = fields['shtyp'];

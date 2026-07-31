@@ -310,8 +310,32 @@ export class Encoder {
 
     let imm = ''.padStart('0', FIELDS.i_imm_11_0.pos[1]);
 
+    if (this.#inst.funct12 !== undefined) {
+      // Fully-fixed immediate instructions (clz, ctz, cpop, sext.b/h, orc.b, rev8, ...)
+      //   imm[11:0] carries no user-supplied value
+      imm = (this.#config.ISA === COPTS_ISA.RV32I && this.#inst.funct12Rv32 !== undefined)
+        ? this.#inst.funct12Rv32
+        : this.#inst.funct12;
+
+    } else if (this.#inst.funct6 !== undefined) {
+      // Bit-manipulation shift-amount instructions (Zba/Zbb/Zbs): fixed 6-bit
+      //   prefix plus a 6-bit shift amount
+      const maxShamt = (this.#config.ISA === COPTS_ISA.RV32I) ? 32 : 64;
+      if (immediate < 0 || immediate >= maxShamt) {
+        throw 'Invalid shamt field (out of range): "' + immediate + '"';
+      }
+      imm = this.#inst.funct6 + encImm(immediate, 6);
+
+    } else if (this.#inst.funct7 !== undefined) {
+      // Bit-manipulation word shift-amount instructions (roriw): fixed 7-bit
+      //   prefix plus a 5-bit shift amount
+      if (immediate < 0 || immediate >= 32) {
+        throw 'Invalid shamt field (out of range): "' + immediate + '"';
+      }
+      imm = this.#inst.funct7 + encImm(immediate, 5);
+
     // Shift instruction
-    if (/^s[lr][al]i/.test(this.#mne)) {
+    } else if (this.#inst.shtyp !== undefined) {
       // Determine shift-amount width based on opcode or config ISA
       //   For encoding, default to the widest shamt possible with the given parameters
       let shamtWidth;
