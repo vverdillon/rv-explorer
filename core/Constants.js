@@ -35,6 +35,7 @@ export const XLEN_MASK = {
 
 // Encoding for floating-point register width
 export const FP_WIDTH = {
+  H: '001',
   S: '010',
   D: '011',
   Q: '100',
@@ -676,6 +677,24 @@ export const ISA_Zfh = {
   'fnmsub.h':  { isa: 'Zfh', fmt: 'R4-type', fp_fmt: FP_FMT.H, opcode: OPCODE.NMSUB },
 }
 
+// Zfhmin (minimal half-precision floating-point) instruction set
+export const ISA_Zfhmin = {
+  'flh':       { isa: 'Zfhmin', fmt: 'I-type', funct3: FP_WIDTH.H, opcode: OPCODE.LOAD_FP },
+  'fsh':       { isa: 'Zfhmin', fmt: 'S-type', funct3: FP_WIDTH.H, opcode: OPCODE.STORE_FP },
+
+  'fmv.x.h':   { isa: 'Zfhmin', fmt: 'R-type', funct5: '11100', fp_fmt: FP_FMT.H, rs2: '00000', funct3: '000', opcode: OPCODE.OP_FP },
+  'fmv.h.x':   { isa: 'Zfhmin', fmt: 'R-type', funct5: '11110', fp_fmt: FP_FMT.H, rs2: '00000', funct3: '000', opcode: OPCODE.OP_FP },
+
+  'fcvt.s.h':  { isa: 'Zfhmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.S, rs2: '000'+FP_FMT.H, opcode: OPCODE.OP_FP },
+  'fcvt.h.s':  { isa: 'Zfhmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.H, rs2: '000'+FP_FMT.S, opcode: OPCODE.OP_FP },
+
+  'fcvt.d.h':  { isa: 'Zfhmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.D, rs2: '000'+FP_FMT.H, opcode: OPCODE.OP_FP },
+  'fcvt.h.d':  { isa: 'Zfhmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.H, rs2: '000'+FP_FMT.D, opcode: OPCODE.OP_FP },
+
+  'fcvt.q.h':  { isa: 'Zfhmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.Q, rs2: '000'+FP_FMT.H, opcode: OPCODE.OP_FP },
+  'fcvt.h.q':  { isa: 'Zfhmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.H, rs2: '000'+FP_FMT.Q, opcode: OPCODE.OP_FP },
+}
+
 // C instruction set
 export const ISA_C = {
 // Load and Store Instructions
@@ -1057,12 +1076,14 @@ export const ISA_AMO = {
 }
 
 export const ISA_LOAD_FP = {
+  [FP_WIDTH.H]: 'flh',
   [FP_WIDTH.S]: 'flw',
   [FP_WIDTH.D]: 'fld',
   [FP_WIDTH.Q]: 'flq',
 }
 
 export const ISA_STORE_FP = {
+  [FP_WIDTH.H]: 'fsh',
   [FP_WIDTH.S]: 'fsw',
   [FP_WIDTH.D]: 'fsd',
   [FP_WIDTH.Q]: 'fsq',
@@ -1128,6 +1149,7 @@ export const ISA_OP_FP = {
     [FP_FMT.Q]: 'fsqrt.q',
   },
   [ISA_F['fmv.w.x'].funct5]: {
+    [FP_FMT.H]: 'fmv.h.x',
     [FP_FMT.S]: 'fmv.w.x',
     [FP_FMT.D]: 'fmv.d.x',
     [FP_FMT.Q]: 'fmv.q.x',
@@ -1135,6 +1157,7 @@ export const ISA_OP_FP = {
   [ISA_F['fclass.s'].funct5]: {
     [FP_FMT.H]: {
       [ISA_Zfh['fclass.h'].funct3]:    'fclass.h',
+      [ISA_Zfhmin['fmv.x.h'].funct3]:  'fmv.x.h',
     },
     [FP_FMT.S]: {
       [ISA_F['fclass.s'].funct3]:   'fclass.s',
@@ -1276,17 +1299,25 @@ export const ISA_OP_FP = {
     },
   },
   [ISA_D['fcvt.s.d'].funct5]: {
+    [FP_FMT.H]: {
+      [ISA_Zfhmin['fcvt.h.s'].rs2]:   'fcvt.h.s',
+      [ISA_Zfhmin['fcvt.h.d'].rs2]:   'fcvt.h.d',
+      [ISA_Zfhmin['fcvt.h.q'].rs2]:   'fcvt.h.q',
+    },
     [FP_FMT.S]: {
-      [ISA_D['fcvt.s.d'].rs2]:   'fcvt.s.d',
-      [ISA_Q['fcvt.s.q'].rs2]:   'fcvt.s.q',
+      [ISA_Zfhmin['fcvt.s.h'].rs2]: 'fcvt.s.h',
+      [ISA_D['fcvt.s.d'].rs2]:      'fcvt.s.d',
+      [ISA_Q['fcvt.s.q'].rs2]:      'fcvt.s.q',
     },
     [FP_FMT.D]: {
-      [ISA_D['fcvt.d.s'].rs2]:   'fcvt.d.s',
-      [ISA_Q['fcvt.d.q'].rs2]:   'fcvt.d.q',
+      [ISA_Zfhmin['fcvt.d.h'].rs2]: 'fcvt.d.h',
+      [ISA_D['fcvt.d.s'].rs2]:      'fcvt.d.s',
+      [ISA_Q['fcvt.d.q'].rs2]:      'fcvt.d.q',
     },
     [FP_FMT.Q]: {
-      [ISA_Q['fcvt.q.s'].rs2]:   'fcvt.q.s',
-      [ISA_Q['fcvt.q.d'].rs2]:   'fcvt.q.d',
+      [ISA_Zfhmin['fcvt.q.h'].rs2]: 'fcvt.q.h',
+      [ISA_Q['fcvt.q.s'].rs2]:      'fcvt.q.s',
+      [ISA_Q['fcvt.q.d'].rs2]:      'fcvt.q.d',
     },
   },
 }
@@ -1801,7 +1832,7 @@ export const ISA = Object.assign({},
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zicond,
-  ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh,
+  ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1826,5 +1857,6 @@ export const ISA_Subsets = {
   Zacas: ISA_Zacas,
   Zabha: ISA_Zabha,
   Zfh: ISA_Zfh,
+  Zfhmin: ISA_Zfhmin,
   Priv: ISA_Priv
 }

@@ -745,6 +745,30 @@ function dec_zfh_opfp_fcvtlh() {
     assertEq(inst.isa, 'RV64Zfh');
 }
 
+/*
+ * Zfhmin extension
+ */
+function dec_zfhmin_loadfp_flh() {
+    let inst = new Instruction('00831287');
+    assertEq(inst.asm, 'flh f5, 8(x6)');
+    assertEq(inst.isa, 'Zfhmin');
+}
+
+function dec_zfhmin_opfp_fmvxh() {
+    let inst = new Instruction('e40302d3');
+    assertEq(inst.asm, 'fmv.x.h x5, f6');
+}
+
+function dec_zfhmin_opfp_fcvtsh() {
+    let inst = new Instruction('402372d3');
+    assertEq(inst.asm, 'fcvt.s.h f5, f6');
+}
+
+function dec_zfhmin_opfp_fcvthd() {
+    let inst = new Instruction('441372d3');
+    assertEq(inst.asm, 'fcvt.h.d f5, f6');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -847,6 +871,10 @@ batchTests('Decoder Tests', [
     ['Dec - Zfh      - MADD      - fmadd.h', dec_zfh_madd_fmaddh],
     ['Dec - Zfh      - OP-FP     - fcvt.w.h', dec_zfh_opfp_fcvtwh],
     ['Dec - Zfh      - OP-FP     - fcvt.l.h', dec_zfh_opfp_fcvtlh],
+    ['Dec - Zfhmin   - LOAD-FP   - flh', dec_zfhmin_loadfp_flh],
+    ['Dec - Zfhmin   - OP-FP     - fmv.x.h', dec_zfhmin_opfp_fmvxh],
+    ['Dec - Zfhmin   - OP-FP     - fcvt.s.h', dec_zfhmin_opfp_fcvtsh],
+    ['Dec - Zfhmin   - OP-FP     - fcvt.h.d', dec_zfhmin_opfp_fcvthd],
 ]);
 
 // Newline

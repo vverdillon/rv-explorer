@@ -683,6 +683,25 @@ function enc_zfh_opfp_fclassh() {
     assertEq(instAbi.hex, inst.hex);
 }
 
+/*
+ * Zfhmin extension
+ */
+function enc_zfhmin_storefp_fsh() {
+    let inst = new Instruction('fsh f5, 8(x6)');
+    assertEq(inst.hex, '00531427');
+    assertEq(inst.isa, 'Zfhmin');
+}
+
+function enc_zfhmin_opfp_fmvhx() {
+    let inst = new Instruction('fmv.h.x f5, x6');
+    assertEq(inst.hex, 'f40302d3');
+}
+
+function enc_zfhmin_opfp_fcvtqh() {
+    let inst = new Instruction('fcvt.q.h f5, f6');
+    assertEq(inst.hex, '462372d3');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -777,6 +796,9 @@ batchTests('Encoder Tests', [
     ['Enc - Zabha    - AMO       - amoadd.h', enc_zabha_amo_amoaddh],
     ['Enc - Zfh      - OP-FP     - fsub.h', enc_zfh_opfp_fsubh],
     ['Enc - Zfh      - OP-FP     - fclass.h', enc_zfh_opfp_fclassh],
+    ['Enc - Zfhmin   - STORE-FP  - fsh', enc_zfhmin_storefp_fsh],
+    ['Enc - Zfhmin   - OP-FP     - fmv.h.x', enc_zfhmin_opfp_fmvhx],
+    ['Enc - Zfhmin   - OP-FP     - fcvt.q.h', enc_zfhmin_opfp_fcvtqh],
 ]);
 
 // Newline
