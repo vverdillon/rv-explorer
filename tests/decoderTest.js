@@ -669,6 +669,15 @@ function dec_zbs_opimm_bexti() {
     assertEq(inst.asm, 'bexti x5, x6, 15');
 }
 
+/*
+ * Zicond extension
+ */
+function dec_zicond_op_czeroeqz() {
+    let inst = new Instruction('0e7352b3');
+    assertEq(inst.asm, 'czero.eqz x5, x6, x7');
+    assertEq(inst.isa, 'Zicond');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -761,6 +770,7 @@ batchTests('Decoder Tests', [
     ['Dec - Zbc      - OP        - clmulh', dec_zbc_op_clmulh],
     ['Dec - Zbs      - OP        - bclr', dec_zbs_op_bclr],
     ['Dec - Zbs      - OP-IMM    - bexti', dec_zbs_opimm_bexti],
+    ['Dec - Zicond   - OP        - czero.eqz', dec_zicond_op_czeroeqz],
 ]);
 
 // Newline

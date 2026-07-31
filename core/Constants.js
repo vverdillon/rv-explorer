@@ -404,6 +404,12 @@ export const ISA_Zbs = {
   bseti:  { isa: 'Zbs', fmt: 'I-type', funct6: '001010', funct3: '001', opcode: OPCODE.OP_IMM },
 }
 
+// Zicond (integer conditional operations) instruction set
+export const ISA_Zicond = {
+  'czero.eqz': { isa: 'Zicond', fmt: 'R-type', funct7: '0000111', funct3: '101', opcode: OPCODE.OP },
+  'czero.nez': { isa: 'Zicond', fmt: 'R-type', funct7: '0000111', funct3: '111', opcode: OPCODE.OP },
+}
+
 // A instruction set
 export const ISA_A = {
   'lr.w':      { isa: 'RV32A', fmt: 'R-type', funct5: '00010', funct3: '010', opcode: OPCODE.AMO },
@@ -726,6 +732,9 @@ export const ISA_OP = {
   [ISA_Zbs['bext'].funct7 + ISA_Zbs['bext'].funct3]: 'bext',
   [ISA_Zbs['binv'].funct7 + ISA_Zbs['binv'].funct3]: 'binv',
   [ISA_Zbs['bset'].funct7 + ISA_Zbs['bset'].funct3]: 'bset',
+  // Zicond
+  [ISA_Zicond['czero.eqz'].funct7 + ISA_Zicond['czero.eqz'].funct3]: 'czero.eqz',
+  [ISA_Zicond['czero.nez'].funct7 + ISA_Zicond['czero.nez'].funct3]: 'czero.nez',
 }
 
 export const ISA_OP_32 = {
@@ -1648,7 +1657,7 @@ export const ISA = Object.assign({},
   ISA_RV32I, ISA_RV64I, ISA_RV128I,
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
-  ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs,
+  ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zicond,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1668,5 +1677,6 @@ export const ISA_Subsets = {
   Zbb: ISA_Zbb,
   Zbc: ISA_Zbc,
   Zbs: ISA_Zbs,
+  Zicond: ISA_Zicond,
   Priv: ISA_Priv
 }

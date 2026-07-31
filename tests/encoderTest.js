@@ -631,6 +631,15 @@ function enc_zbs_opimm_binvi() {
     assertEq(inst.isa, 'Zbs');
 }
 
+/*
+ * Zicond extension
+ */
+function enc_zicond_op_czeronez() {
+    let inst = new Instruction('czero.nez x5, x6, x7');
+    assertEq(inst.hex, '0e7372b3');
+    assertEq(inst.isa, 'Zicond');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -719,6 +728,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zbb      - OP-IMM    - ctz', enc_zbb_opimm_ctz],
     ['Enc - Zbc      - OP        - clmul', enc_zbc_op_clmul],
     ['Enc - Zbs      - OP-IMM    - binvi', enc_zbs_opimm_binvi],
+    ['Enc - Zicond   - OP        - czero.nez', enc_zicond_op_czeronez],
 ]);
 
 // Newline
