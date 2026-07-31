@@ -308,7 +308,7 @@ function renderConversion(inst, abi=false) {
   });
 
   // Highlight feature
-  let superHighlight = "yellow";
+  let superHighlight = "var(--color-co)";
   let subHighlight = "var(--color-fd)";
 
   // Handle tooltip highlight for binary fragment. Info label only appears when showLabel is set true
