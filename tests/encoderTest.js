@@ -599,6 +599,20 @@ function enc_zba_op32_sh3adduw() {
     assertEq(inst.isa, 'RV64Zba');
 }
 
+/*
+ * Zbb extension
+ */
+function enc_zbb_op_orn() {
+    let inst = new Instruction('orn x5, x6, x7');
+    assertEq(inst.hex, '407362b3');
+    assertEq(inst.isa, 'Zbb');
+}
+
+function enc_zbb_opimm_ctz() {
+    let inst = new Instruction('ctz x5, x6');
+    assertEq(inst.hex, '60131293');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -683,6 +697,8 @@ batchTests('Encoder Tests', [
     ['Enc - RV32C    - C2-CR     - c.add', enc_rv32c_c2cr_cadd],
     ['Enc - Zba      - OP        - sh1add', enc_zba_op_sh1add],
     ['Enc - Zba      - OP-32     - sh3add.uw', enc_zba_op32_sh3adduw],
+    ['Enc - Zbb      - OP        - orn', enc_zbb_op_orn],
+    ['Enc - Zbb      - OP-IMM    - ctz', enc_zbb_opimm_ctz],
 ]);
 
 // Newline

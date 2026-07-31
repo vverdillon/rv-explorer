@@ -622,6 +622,30 @@ function dec_zba_opimm32_slliuw() {
 /*
  * Execute tests
  */
+/*
+ * Zbb extension
+ */
+function dec_zbb_op_andn() {
+    let inst = new Instruction('407372b3');
+    assertEq(inst.asm, 'andn x5, x6, x7');
+    assertEq(inst.isa, 'Zbb');
+}
+
+function dec_zbb_op_rol() {
+    let inst = new Instruction('607312b3');
+    assertEq(inst.asm, 'rol x5, x6, x7');
+}
+
+function dec_zbb_opimm_clz() {
+    let inst = new Instruction('60031293');
+    assertEq(inst.asm, 'clz x5, x6');
+}
+
+function dec_zbb_opimm_rev8() {
+    let inst = new Instruction('6b835293');
+    assertEq(inst.asm, 'rev8 x5, x6');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -707,6 +731,10 @@ batchTests('Decoder Tests', [
     ['Dec - Zba      - OP        - sh2add', dec_zba_op_sh2add],
     ['Dec - Zba      - OP-32     - add.uw', dec_zba_op32_adduw],
     ['Dec - Zba      - OP-IMM-32 - slli.uw', dec_zba_opimm32_slliuw],
+    ['Dec - Zbb      - OP        - andn', dec_zbb_op_andn],
+    ['Dec - Zbb      - OP        - rol', dec_zbb_op_rol],
+    ['Dec - Zbb      - OP-IMM    - clz', dec_zbb_opimm_clz],
+    ['Dec - Zbb      - OP-IMM    - rev8', dec_zbb_opimm_rev8],
 ]);
 
 // Newline

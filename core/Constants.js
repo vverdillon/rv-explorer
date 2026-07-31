@@ -353,6 +353,37 @@ export const ISA_Zba = {
   'slli.ud':   { isa: 'RV128Zba', fmt: 'I-type', funct6: '000010', funct3: '010', opcode: OPCODE.OP_IMM_64 },
 }
 
+// Zbb (basic bit-manipulation) instruction set
+export const ISA_Zbb = {
+  andn:   { isa: 'Zbb', fmt: 'R-type', funct7: '0100000', funct3: '111', opcode: OPCODE.OP },
+  orn:    { isa: 'Zbb', fmt: 'R-type', funct7: '0100000', funct3: '110', opcode: OPCODE.OP },
+  xnor:   { isa: 'Zbb', fmt: 'R-type', funct7: '0100000', funct3: '100', opcode: OPCODE.OP },
+  max:    { isa: 'Zbb', fmt: 'R-type', funct7: '0000101', funct3: '110', opcode: OPCODE.OP },
+  maxu:   { isa: 'Zbb', fmt: 'R-type', funct7: '0000101', funct3: '111', opcode: OPCODE.OP },
+  min:    { isa: 'Zbb', fmt: 'R-type', funct7: '0000101', funct3: '100', opcode: OPCODE.OP },
+  minu:   { isa: 'Zbb', fmt: 'R-type', funct7: '0000101', funct3: '101', opcode: OPCODE.OP },
+  rol:    { isa: 'Zbb', fmt: 'R-type', funct7: '0110000', funct3: '001', opcode: OPCODE.OP },
+  ror:    { isa: 'Zbb', fmt: 'R-type', funct7: '0110000', funct3: '101', opcode: OPCODE.OP },
+
+  rolw:   { isa: 'RV64Zbb', fmt: 'R-type', funct7: '0110000', funct3: '001', opcode: OPCODE.OP_32 },
+  rorw:   { isa: 'RV64Zbb', fmt: 'R-type', funct7: '0110000', funct3: '101', opcode: OPCODE.OP_32 },
+
+  rori:   { isa: 'Zbb',     fmt: 'I-type', funct6: '011000',  funct3: '101', opcode: OPCODE.OP_IMM },
+  roriw:  { isa: 'RV64Zbb', fmt: 'I-type', funct7: '0110000', funct3: '101', opcode: OPCODE.OP_IMM_32 },
+
+  clz:      { isa: 'Zbb', fmt: 'I-type', funct12: '011000000000', funct3: '001', opcode: OPCODE.OP_IMM },
+  ctz:      { isa: 'Zbb', fmt: 'I-type', funct12: '011000000001', funct3: '001', opcode: OPCODE.OP_IMM },
+  cpop:     { isa: 'Zbb', fmt: 'I-type', funct12: '011000000010', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sext.b': { isa: 'Zbb', fmt: 'I-type', funct12: '011000000100', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sext.h': { isa: 'Zbb', fmt: 'I-type', funct12: '011000000101', funct3: '001', opcode: OPCODE.OP_IMM },
+  'orc.b':  { isa: 'Zbb', fmt: 'I-type', funct12: '001010000111', funct3: '101', opcode: OPCODE.OP_IMM },
+  rev8:     { isa: 'Zbb', fmt: 'I-type', funct12: '011010111000', funct12Rv32: '011010011000', funct3: '101', opcode: OPCODE.OP_IMM },
+
+  clzw:   { isa: 'RV64Zbb', fmt: 'I-type', funct12: '011000000000', funct3: '001', opcode: OPCODE.OP_IMM_32 },
+  ctzw:   { isa: 'RV64Zbb', fmt: 'I-type', funct12: '011000000001', funct3: '001', opcode: OPCODE.OP_IMM_32 },
+  cpopw:  { isa: 'RV64Zbb', fmt: 'I-type', funct12: '011000000010', funct3: '001', opcode: OPCODE.OP_IMM_32 },
+}
+
 // A instruction set
 export const ISA_A = {
   'lr.w':      { isa: 'RV32A', fmt: 'R-type', funct5: '00010', funct3: '010', opcode: OPCODE.AMO },
@@ -656,6 +687,16 @@ export const ISA_OP = {
   [ISA_Zba['sh1add'].funct7 + ISA_Zba['sh1add'].funct3]: 'sh1add',
   [ISA_Zba['sh2add'].funct7 + ISA_Zba['sh2add'].funct3]: 'sh2add',
   [ISA_Zba['sh3add'].funct7 + ISA_Zba['sh3add'].funct3]: 'sh3add',
+  // Zbb
+  [ISA_Zbb['andn'].funct7 + ISA_Zbb['andn'].funct3]: 'andn',
+  [ISA_Zbb['orn'].funct7  + ISA_Zbb['orn'].funct3]:  'orn',
+  [ISA_Zbb['xnor'].funct7 + ISA_Zbb['xnor'].funct3]: 'xnor',
+  [ISA_Zbb['max'].funct7  + ISA_Zbb['max'].funct3]:  'max',
+  [ISA_Zbb['maxu'].funct7 + ISA_Zbb['maxu'].funct3]: 'maxu',
+  [ISA_Zbb['min'].funct7  + ISA_Zbb['min'].funct3]:  'min',
+  [ISA_Zbb['minu'].funct7 + ISA_Zbb['minu'].funct3]: 'minu',
+  [ISA_Zbb['rol'].funct7  + ISA_Zbb['rol'].funct3]:  'rol',
+  [ISA_Zbb['ror'].funct7  + ISA_Zbb['ror'].funct3]:  'ror',
 }
 
 export const ISA_OP_32 = {
@@ -676,6 +717,9 @@ export const ISA_OP_32 = {
   [ISA_Zba['sh1add.uw'].funct7 + ISA_Zba['sh1add.uw'].funct3]: 'sh1add.uw',
   [ISA_Zba['sh2add.uw'].funct7 + ISA_Zba['sh2add.uw'].funct3]: 'sh2add.uw',
   [ISA_Zba['sh3add.uw'].funct7 + ISA_Zba['sh3add.uw'].funct3]: 'sh3add.uw',
+  // Zbb
+  [ISA_Zbb['rolw'].funct7 + ISA_Zbb['rolw'].funct3]: 'rolw',
+  [ISA_Zbb['rorw'].funct7 + ISA_Zbb['rorw'].funct3]: 'rorw',
 }
 
 export const ISA_OP_64 = {
@@ -740,12 +784,27 @@ export const ISA_OP_IMM = {
   [ISA_RV32I['slli'].funct3]: {
     [shamt6Prefix(ISA_RV32I['slli'])]:                 'slli',
     [shamt6Prefix(ISA_RV32I['slli']).slice(0, 5) + '1']: 'slli',
+    [ISA_Zbb['clz'].funct12.substring(0, 6)]: {
+      [ISA_Zbb['clz'].funct12.substring(6)]:     'clz',
+      [ISA_Zbb['ctz'].funct12.substring(6)]:     'ctz',
+      [ISA_Zbb['cpop'].funct12.substring(6)]:    'cpop',
+      [ISA_Zbb['sext.b'].funct12.substring(6)]:  'sext.b',
+      [ISA_Zbb['sext.h'].funct12.substring(6)]:  'sext.h',
+    },
   },
   [ISA_RV32I['srli'].funct3]: {
     [shamt6Prefix(ISA_RV32I['srli'])]:                 'srli',
     [shamt6Prefix(ISA_RV32I['srli']).slice(0, 5) + '1']: 'srli',
     [shamt6Prefix(ISA_RV32I['srai'])]:                 'srai',
     [shamt6Prefix(ISA_RV32I['srai']).slice(0, 5) + '1']: 'srai',
+    [ISA_Zbb['rori'].funct6]:           'rori',
+    [ISA_Zbb['orc.b'].funct12.substring(0, 6)]: {
+      [ISA_Zbb['orc.b'].funct12.substring(6)]: 'orc.b',
+    },
+    [ISA_Zbb['rev8'].funct12.substring(0, 6)]: {
+      [ISA_Zbb['rev8'].funct12.substring(6)]:      'rev8',
+      [ISA_Zbb['rev8'].funct12Rv32.substring(6)]:  'rev8',
+    },
   }
 }
 
@@ -755,12 +814,18 @@ export const ISA_OP_IMM_32 = {
   [ISA_RV64I['slliw'].funct3]: {
     [shamt6Prefix(ISA_RV64I['slliw'])]:      'slliw',
     [ISA_Zba['slli.uw'].funct6]:              'slli.uw',
+    [ISA_Zbb['clzw'].funct12.substring(0, 6)]: {
+      [ISA_Zbb['clzw'].funct12.substring(6)]:  'clzw',
+      [ISA_Zbb['ctzw'].funct12.substring(6)]:  'ctzw',
+      [ISA_Zbb['cpopw'].funct12.substring(6)]: 'cpopw',
+    },
   },
   // roriw shares this funct3 with srliw/sraiw; keyed by the full 7-bit funct7
   // prefix (bits[31:25]) since roriw's fixed prefix does not fit in 6 bits
   [ISA_RV64I['srliw'].funct3]: {
     ['0' + ISA_RV64I['srliw'].shtyp + '00000']: 'srliw',
     ['0' + ISA_RV64I['sraiw'].shtyp + '00000']: 'sraiw',
+    [ISA_Zbb['roriw'].funct7]: 'roriw',
   },
 }
 
@@ -1550,7 +1615,7 @@ export const ISA = Object.assign({},
   ISA_RV32I, ISA_RV64I, ISA_RV128I,
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
-  ISA_Zba,
+  ISA_Zba, ISA_Zbb,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1567,5 +1632,6 @@ export const ISA_Subsets = {
   Q: ISA_Q,
   C: ISA_C,
   Zba: ISA_Zba,
+  Zbb: ISA_Zbb,
   Priv: ISA_Priv
 }
