@@ -640,6 +640,15 @@ function enc_zicond_op_czeronez() {
     assertEq(inst.isa, 'Zicond');
 }
 
+/*
+ * Zawrs extension
+ */
+function enc_zawrs_system_wrssto() {
+    let inst = new Instruction('wrs.sto');
+    assertEq(inst.hex, '01d00073');
+    assertEq(inst.isa, 'Zawrs');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -729,6 +738,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zbc      - OP        - clmul', enc_zbc_op_clmul],
     ['Enc - Zbs      - OP-IMM    - binvi', enc_zbs_opimm_binvi],
     ['Enc - Zicond   - OP        - czero.nez', enc_zicond_op_czeronez],
+    ['Enc - Zawrs    - SYSTEM    - wrs.sto', enc_zawrs_system_wrssto],
 ]);
 
 // Newline

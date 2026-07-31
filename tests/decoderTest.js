@@ -678,6 +678,15 @@ function dec_zicond_op_czeroeqz() {
     assertEq(inst.isa, 'Zicond');
 }
 
+/*
+ * Zawrs extension
+ */
+function dec_zawrs_system_wrsnto() {
+    let inst = new Instruction('00d00073');
+    assertEq(inst.asm, 'wrs.nto');
+    assertEq(inst.isa, 'Zawrs');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -771,6 +780,7 @@ batchTests('Decoder Tests', [
     ['Dec - Zbs      - OP        - bclr', dec_zbs_op_bclr],
     ['Dec - Zbs      - OP-IMM    - bexti', dec_zbs_opimm_bexti],
     ['Dec - Zicond   - OP        - czero.eqz', dec_zicond_op_czeroeqz],
+    ['Dec - Zawrs    - SYSTEM    - wrs.nto', dec_zawrs_system_wrsnto],
 ]);
 
 // Newline

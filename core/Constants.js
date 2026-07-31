@@ -449,6 +449,12 @@ export const ISA_A = {
   'amomaxu.q': { isa: 'RV128A', fmt: 'R-type', funct5: '11100', funct3: '100', opcode: OPCODE.AMO },
 }
 
+// Zawrs (wait-on-reservation-set) instruction set
+export const ISA_Zawrs = {
+  'wrs.nto': { isa: 'Zawrs', fmt: 'I-type', funct12: '000000001101', funct3: '000', opcode: OPCODE.SYSTEM },
+  'wrs.sto': { isa: 'Zawrs', fmt: 'I-type', funct12: '000000011101', funct3: '000', opcode: OPCODE.SYSTEM },
+}
+
 // F instruction set
 export const ISA_F = {
   'flw':       { isa: 'RV32F', fmt: 'I-type', funct3: FP_WIDTH.S, opcode: OPCODE.LOAD_FP },
@@ -904,6 +910,8 @@ export const ISA_SYSTEM = {
     [ISA_Priv['sret'].funct12]:     'sret',
     [ISA_Priv['mret'].funct12]:     'mret',
     [ISA_Priv['wfi'].funct12]:      'wfi',
+    [ISA_Zawrs['wrs.nto'].funct12]: 'wrs.nto',
+    [ISA_Zawrs['wrs.sto'].funct12]: 'wrs.sto',
   },
   [ISA_Zicsr['csrrw'].funct3]:  'csrrw',
   [ISA_Zicsr['csrrs'].funct3]:  'csrrs',
@@ -1658,6 +1666,7 @@ export const ISA = Object.assign({},
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zicond,
+  ISA_Zawrs,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -1678,5 +1687,6 @@ export const ISA_Subsets = {
   Zbc: ISA_Zbc,
   Zbs: ISA_Zbs,
   Zicond: ISA_Zicond,
+  Zawrs: ISA_Zawrs,
   Priv: ISA_Priv
 }
