@@ -405,6 +405,14 @@ export const ISA_Zbs = {
   bseti:  { isa: 'Zbs', fmt: 'I-type', funct6: '001010', funct3: '001', opcode: OPCODE.OP_IMM },
 }
 
+// Zbkc (carry-less multiplication for cryptography) instruction set
+//   A restriction of Zbc to clmul/clmulh (excludes clmulr); both instructions
+//   are already registered under Zbc, so this only adds the ISA_Subsets entry
+export const ISA_Zbkc = {
+  clmul:  ISA_Zbc.clmul,
+  clmulh: ISA_Zbc.clmulh,
+}
+
 // Zicond (integer conditional operations) instruction set
 export const ISA_Zicond = {
   'czero.eqz': { isa: 'Zicond', fmt: 'R-type', funct7: '0000111', funct3: '101', opcode: OPCODE.OP },
@@ -1851,6 +1859,7 @@ export const ISA_Subsets = {
   Zba: ISA_Zba,
   Zbb: ISA_Zbb,
   Zbc: ISA_Zbc,
+  Zbkc: ISA_Zbkc,
   Zbs: ISA_Zbs,
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
