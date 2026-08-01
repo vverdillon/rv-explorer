@@ -776,6 +776,32 @@ function enc_zicbo_miscmem_cboflush() {
     assertEq(inst.hex, '0025200f');
 }
 
+/*
+ * Zfa extension
+ */
+function enc_zfa_opfp_flih() {
+    let inst = new Instruction('fli.h f3, -1.0');
+    assertEq(inst.hex, 'f41001d3');
+    assertEq(inst.isa, 'Zfa');
+}
+
+function enc_zfa_opfp_fmaxmd() {
+    let inst = new Instruction('fmaxm.d f5, f6, f7');
+    assertEq(inst.hex, '2a7332d3');
+}
+
+function enc_zfa_opfp_froundnxs() {
+    let inst = new Instruction('froundnx.s f5, f6');
+    assertEq(inst.hex, '405372d3');
+}
+
+function enc_zfa_opfp_fmvhxd() {
+    // RV32-only: splits a double across two 32-bit integer registers
+    let inst = new Instruction('fmvh.x.d x5, f6');
+    assertEq(inst.hex, 'e21302d3');
+    assertEq(inst.isa, 'RV32Zfa');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -883,6 +909,10 @@ batchTests('Encoder Tests', [
     ['Enc - Zksh     - OP-IMM    - sm3p1', enc_zksh_opimm_sm3p1],
     ['Enc - Zicbo    - MISC-MEM  - cbo.zero', enc_zicbo_miscmem_cbozero],
     ['Enc - Zicbo    - MISC-MEM  - cbo.flush', enc_zicbo_miscmem_cboflush],
+    ['Enc - Zfa      - OP-FP     - fli.h', enc_zfa_opfp_flih],
+    ['Enc - Zfa      - OP-FP     - fmaxm.d', enc_zfa_opfp_fmaxmd],
+    ['Enc - Zfa      - OP-FP     - froundnx.s', enc_zfa_opfp_froundnxs],
+    ['Enc - Zfa      - OP-FP     - fmvh.x.d', enc_zfa_opfp_fmvhxd],
 ]);
 
 // Newline

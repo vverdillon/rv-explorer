@@ -873,6 +873,35 @@ function dec_zicbo_miscmem_cboinval() {
     assertEq(inst.asm, 'cbo.inval (x10)');
 }
 
+/*
+ * Zfa extension
+ */
+function dec_zfa_opfp_flis() {
+    // rs1 selects one of 32 standard FP constants, not a real register
+    let inst = new Instruction('f01802d3');
+    assertEq(inst.asm, 'fli.s f5, 1.0');
+    assertEq(inst.isa, 'Zfa');
+}
+
+function dec_zfa_opfp_fminms() {
+    let inst = new Instruction('287322d3');
+    assertEq(inst.asm, 'fminm.s f5, f6, f7');
+}
+
+function dec_zfa_opfp_fleqs() {
+    let inst = new Instruction('a07342d3');
+    let instAbi = new Instruction('a07342d3', { ABI:true });
+    assertEq(inst.asm, 'fleq.s x5, f6, f7');
+    assertEq(instAbi.asm, 'fleq.s t0, ft6, ft7');
+}
+
+function dec_zfa_opfp_fcvtmodwd() {
+    // Always round-to-zero: funct3 is fixed, not a user rm operand
+    let inst = new Instruction('c28312d3', { ISA:COPTS_ISA.RV32I });
+    assertEq(inst.asm, 'fcvtmod.w.d x5, f6');
+    assertEq(inst.isa, 'RV32Zfa');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -994,6 +1023,10 @@ batchTests('Decoder Tests', [
     ['Dec - Zksh     - OP-IMM    - sm3p0', dec_zksh_opimm_sm3p0],
     ['Dec - Zicbo    - MISC-MEM  - cbo.clean', dec_zicbo_miscmem_cboclean],
     ['Dec - Zicbo    - MISC-MEM  - cbo.inval', dec_zicbo_miscmem_cboinval],
+    ['Dec - Zfa      - OP-FP     - fli.s', dec_zfa_opfp_flis],
+    ['Dec - Zfa      - OP-FP     - fminm.s', dec_zfa_opfp_fminms],
+    ['Dec - Zfa      - OP-FP     - fleq.s', dec_zfa_opfp_fleqs],
+    ['Dec - Zfa      - OP-FP     - fcvtmod.w.d', dec_zfa_opfp_fcvtmodwd],
 ]);
 
 // Newline

@@ -49,6 +49,20 @@ export const FP_FMT = {
   Q: '11',  // 128-bit
 }
 
+// Zfa fli.* immediate table: 32 standard floating-point constants, selected
+// via the rs1 field (which does not encode a real register for fli.*).
+// 'min'/'inf'/'nan' are rendered as-is since their concrete bit pattern is
+// specific to each floating-point width
+const FLI_TABLE = [
+  -1, 'min', 2 ** -16, 2 ** -15, 2 ** -8, 2 ** -7, 0.0625, 0.125,
+  0.25, 0.3125, 0.375, 0.4375, 0.5, 0.625, 0.75, 0.875,
+  1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4,
+  8, 16, 128, 256, 32768, 65536, 'inf', 'nan',
+]
+export const FLI_STRINGS = FLI_TABLE.map(
+  v => typeof v === 'string' ? v : Number.isInteger(v) ? v.toFixed(1) : String(v)
+)
+
 /*
  * Instruction fields
  */
@@ -76,6 +90,9 @@ export const FIELDS = {
 
   // R-type: Zksed "byte select" immediate carved out of the top of funct7
   r_bs: { pos: [31, 2], name: 'bs' },
+
+  // R-type: Zfa fli.* constant-table selector (occupies the rs1 position)
+  r_fli: { pos: [19, 5], name: 'fli' },
 
   // I-type
   i_imm_11_0: { pos: [31, 12], name: 'imm[11:0]' },
@@ -824,6 +841,57 @@ export const ISA_Zfhmin = {
   'fcvt.h.q':  { isa: 'Zfhmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.H, rs2: '000'+FP_FMT.Q, opcode: OPCODE.OP_FP },
 }
 
+// Zfa (additional floating-point) instruction set
+export const ISA_Zfa = {
+  // fli.*: rs1 is not a real register - it selects one of 32 standard
+  // floating-point constants (see FLI_STRINGS); rs1Fli marks this for
+  // Decoder/Encoder
+  'fli.h': { isa: 'Zfa', fmt: 'R-type', funct5: '11110', fp_fmt: FP_FMT.H, rs2: '00001', funct3: '000', rs1Fli: true, opcode: OPCODE.OP_FP },
+  'fli.s': { isa: 'Zfa', fmt: 'R-type', funct5: '11110', fp_fmt: FP_FMT.S, rs2: '00001', funct3: '000', rs1Fli: true, opcode: OPCODE.OP_FP },
+  'fli.d': { isa: 'Zfa', fmt: 'R-type', funct5: '11110', fp_fmt: FP_FMT.D, rs2: '00001', funct3: '000', rs1Fli: true, opcode: OPCODE.OP_FP },
+  'fli.q': { isa: 'Zfa', fmt: 'R-type', funct5: '11110', fp_fmt: FP_FMT.Q, rs2: '00001', funct3: '000', rs1Fli: true, opcode: OPCODE.OP_FP },
+
+  'fminm.h': { isa: 'Zfa', fmt: 'R-type', funct5: '00101', fp_fmt: FP_FMT.H, funct3: '010', opcode: OPCODE.OP_FP },
+  'fmaxm.h': { isa: 'Zfa', fmt: 'R-type', funct5: '00101', fp_fmt: FP_FMT.H, funct3: '011', opcode: OPCODE.OP_FP },
+  'fminm.s': { isa: 'Zfa', fmt: 'R-type', funct5: '00101', fp_fmt: FP_FMT.S, funct3: '010', opcode: OPCODE.OP_FP },
+  'fmaxm.s': { isa: 'Zfa', fmt: 'R-type', funct5: '00101', fp_fmt: FP_FMT.S, funct3: '011', opcode: OPCODE.OP_FP },
+  'fminm.d': { isa: 'Zfa', fmt: 'R-type', funct5: '00101', fp_fmt: FP_FMT.D, funct3: '010', opcode: OPCODE.OP_FP },
+  'fmaxm.d': { isa: 'Zfa', fmt: 'R-type', funct5: '00101', fp_fmt: FP_FMT.D, funct3: '011', opcode: OPCODE.OP_FP },
+  'fminm.q': { isa: 'Zfa', fmt: 'R-type', funct5: '00101', fp_fmt: FP_FMT.Q, funct3: '010', opcode: OPCODE.OP_FP },
+  'fmaxm.q': { isa: 'Zfa', fmt: 'R-type', funct5: '00101', fp_fmt: FP_FMT.Q, funct3: '011', opcode: OPCODE.OP_FP },
+
+  // fround/froundnx: rm is a genuine (variable) rounding-mode operand,
+  // signalled by the absence of `funct3`, same as fadd.s etc
+  'fround.h':   { isa: 'Zfa', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.H, rs2: '00100', opcode: OPCODE.OP_FP },
+  'froundnx.h': { isa: 'Zfa', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.H, rs2: '00101', opcode: OPCODE.OP_FP },
+  'fround.s':   { isa: 'Zfa', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.S, rs2: '00100', opcode: OPCODE.OP_FP },
+  'froundnx.s': { isa: 'Zfa', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.S, rs2: '00101', opcode: OPCODE.OP_FP },
+  'fround.d':   { isa: 'Zfa', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.D, rs2: '00100', opcode: OPCODE.OP_FP },
+  'froundnx.d': { isa: 'Zfa', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.D, rs2: '00101', opcode: OPCODE.OP_FP },
+  'fround.q':   { isa: 'Zfa', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.Q, rs2: '00100', opcode: OPCODE.OP_FP },
+  'froundnx.q': { isa: 'Zfa', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.Q, rs2: '00101', opcode: OPCODE.OP_FP },
+
+  'fleq.h': { isa: 'Zfa', fmt: 'R-type', funct5: '10100', fp_fmt: FP_FMT.H, funct3: '100', opcode: OPCODE.OP_FP },
+  'fltq.h': { isa: 'Zfa', fmt: 'R-type', funct5: '10100', fp_fmt: FP_FMT.H, funct3: '101', opcode: OPCODE.OP_FP },
+  'fleq.s': { isa: 'Zfa', fmt: 'R-type', funct5: '10100', fp_fmt: FP_FMT.S, funct3: '100', opcode: OPCODE.OP_FP },
+  'fltq.s': { isa: 'Zfa', fmt: 'R-type', funct5: '10100', fp_fmt: FP_FMT.S, funct3: '101', opcode: OPCODE.OP_FP },
+  'fleq.d': { isa: 'Zfa', fmt: 'R-type', funct5: '10100', fp_fmt: FP_FMT.D, funct3: '100', opcode: OPCODE.OP_FP },
+  'fltq.d': { isa: 'Zfa', fmt: 'R-type', funct5: '10100', fp_fmt: FP_FMT.D, funct3: '101', opcode: OPCODE.OP_FP },
+  'fleq.q': { isa: 'Zfa', fmt: 'R-type', funct5: '10100', fp_fmt: FP_FMT.Q, funct3: '100', opcode: OPCODE.OP_FP },
+  'fltq.q': { isa: 'Zfa', fmt: 'R-type', funct5: '10100', fp_fmt: FP_FMT.Q, funct3: '101', opcode: OPCODE.OP_FP },
+
+  // Always round-to-zero (funct3 fixed, not a user-selectable rm)
+  'fcvtmod.w.d': { isa: 'RV32Zfa', fmt: 'R-type', funct5: '11000', fp_fmt: FP_FMT.D, rs2: '01000', funct3: '001', opcode: OPCODE.OP_FP },
+
+  // RV32-only: splits a double across two 32-bit integer registers
+  'fmvh.x.d': { isa: 'RV32Zfa', fmt: 'R-type', funct5: '11100', fp_fmt: FP_FMT.D, rs2: '00001', funct3: '000', opcode: OPCODE.OP_FP },
+  'fmvp.d.x': { isa: 'RV32Zfa', fmt: 'R-type', funct5: '10110', fp_fmt: FP_FMT.D, funct3: '000', rs2Int: true, opcode: OPCODE.OP_FP },
+
+  // RV64-only: splits a quad across two 64-bit integer registers
+  'fmvh.x.q': { isa: 'RV64Zfa', fmt: 'R-type', funct5: '11100', fp_fmt: FP_FMT.Q, rs2: '00001', funct3: '000', opcode: OPCODE.OP_FP },
+  'fmvp.q.x': { isa: 'RV64Zfa', fmt: 'R-type', funct5: '10110', fp_fmt: FP_FMT.Q, funct3: '000', rs2Int: true, opcode: OPCODE.OP_FP },
+}
+
 // C instruction set
 export const ISA_C = {
 // Load and Store Instructions
@@ -1349,10 +1417,27 @@ export const ISA_OP_FP = {
     [FP_FMT.Q]: 'fsqrt.q',
   },
   [ISA_F['fmv.w.x'].funct5]: {
-    [FP_FMT.H]: 'fmv.h.x',
-    [FP_FMT.S]: 'fmv.w.x',
-    [FP_FMT.D]: 'fmv.d.x',
-    [FP_FMT.Q]: 'fmv.q.x',
+    [FP_FMT.H]: {
+      [ISA_Zfhmin['fmv.h.x'].rs2]: 'fmv.h.x',
+      [ISA_Zfa['fli.h'].rs2]:      'fli.h',
+    },
+    [FP_FMT.S]: {
+      [ISA_F['fmv.w.x'].rs2]: 'fmv.w.x',
+      [ISA_Zfa['fli.s'].rs2]: 'fli.s',
+    },
+    [FP_FMT.D]: {
+      [ISA_D['fmv.d.x'].rs2]: 'fmv.d.x',
+      [ISA_Zfa['fli.d'].rs2]: 'fli.d',
+    },
+    [FP_FMT.Q]: {
+      [ISA_Q['fmv.q.x'].rs2]: 'fmv.q.x',
+      [ISA_Zfa['fli.q'].rs2]: 'fli.q',
+    },
+  },
+  // Zfa fmvp.d.x/fmvp.q.x: rd is float, but rs1 AND rs2 are both integer
+  [ISA_Zfa['fmvp.d.x'].funct5]: {
+    [FP_FMT.D]: 'fmvp.d.x',
+    [FP_FMT.Q]: 'fmvp.q.x',
   },
   [ISA_F['fclass.s'].funct5]: {
     [FP_FMT.H]: {
@@ -1366,10 +1451,14 @@ export const ISA_OP_FP = {
     [FP_FMT.D]: {
       [ISA_D['fclass.d'].funct3]:   'fclass.d',
       [ISA_D['fmv.x.d'].funct3]:    'fmv.x.d',
+      // Zfa/RV32: rs2 distinguishes fmvh.x.d from fclass.d/fmv.x.d, which
+      // share this funct3-keyed bucket but both have rs2 fixed to 0
+      [ISA_Zfa['fmvh.x.d'].rs2]:    'fmvh.x.d',
     },
     [FP_FMT.Q]: {
       [ISA_Q['fclass.q'].funct3]:   'fclass.q',
       [ISA_Q['fmv.x.q'].funct3]:    'fmv.x.q',
+      [ISA_Zfa['fmvh.x.q'].rs2]:    'fmvh.x.q',
     },
   },
   [ISA_F['fsgnj.s'].funct5]: {
@@ -1398,18 +1487,26 @@ export const ISA_OP_FP = {
     [FP_FMT.H]: {
       [ISA_Zfh['fmin.h'].funct3]:   'fmin.h',
       [ISA_Zfh['fmax.h'].funct3]:   'fmax.h',
+      [ISA_Zfa['fminm.h'].funct3]:  'fminm.h',
+      [ISA_Zfa['fmaxm.h'].funct3]:  'fmaxm.h',
     },
     [FP_FMT.S]: {
       [ISA_F['fmin.s'].funct3]:     'fmin.s',
       [ISA_F['fmax.s'].funct3]:     'fmax.s',
+      [ISA_Zfa['fminm.s'].funct3]:  'fminm.s',
+      [ISA_Zfa['fmaxm.s'].funct3]:  'fmaxm.s',
     },
     [FP_FMT.D]: {
       [ISA_D['fmin.d'].funct3]:     'fmin.d',
       [ISA_D['fmax.d'].funct3]:     'fmax.d',
+      [ISA_Zfa['fminm.d'].funct3]:  'fminm.d',
+      [ISA_Zfa['fmaxm.d'].funct3]:  'fmaxm.d',
     },
     [FP_FMT.Q]: {
       [ISA_Q['fmin.q'].funct3]:     'fmin.q',
       [ISA_Q['fmax.q'].funct3]:     'fmax.q',
+      [ISA_Zfa['fminm.q'].funct3]:  'fminm.q',
+      [ISA_Zfa['fmaxm.q'].funct3]:  'fmaxm.q',
     },
   },
   [ISA_F['feq.s'].funct5]: {
@@ -1417,21 +1514,29 @@ export const ISA_OP_FP = {
       [ISA_Zfh['feq.h'].funct3]:   'feq.h',
       [ISA_Zfh['flt.h'].funct3]:   'flt.h',
       [ISA_Zfh['fle.h'].funct3]:   'fle.h',
+      [ISA_Zfa['fleq.h'].funct3]:  'fleq.h',
+      [ISA_Zfa['fltq.h'].funct3]:  'fltq.h',
     },
     [FP_FMT.S]: {
       [ISA_F['feq.s'].funct3]:     'feq.s',
       [ISA_F['flt.s'].funct3]:     'flt.s',
       [ISA_F['fle.s'].funct3]:     'fle.s',
+      [ISA_Zfa['fleq.s'].funct3]:  'fleq.s',
+      [ISA_Zfa['fltq.s'].funct3]:  'fltq.s',
     },
     [FP_FMT.D]: {
       [ISA_D['feq.d'].funct3]:     'feq.d',
       [ISA_D['flt.d'].funct3]:     'flt.d',
       [ISA_D['fle.d'].funct3]:     'fle.d',
+      [ISA_Zfa['fleq.d'].funct3]:  'fleq.d',
+      [ISA_Zfa['fltq.d'].funct3]:  'fltq.d',
     },
     [FP_FMT.Q]: {
       [ISA_Q['feq.q'].funct3]:     'feq.q',
       [ISA_Q['flt.q'].funct3]:     'flt.q',
       [ISA_Q['fle.q'].funct3]:     'fle.q',
+      [ISA_Zfa['fleq.q'].funct3]:  'fleq.q',
+      [ISA_Zfa['fltq.q'].funct3]:  'fltq.q',
     },
   },
   [ISA_F['fcvt.w.s'].funct5]: {
@@ -1456,6 +1561,7 @@ export const ISA_OP_FP = {
       [ISA_D['fcvt.lu.d'].rs2]:  'fcvt.lu.d',
       [ISA_D['fcvt.t.d'].rs2]:   'fcvt.t.d',
       [ISA_D['fcvt.tu.d'].rs2]:  'fcvt.tu.d',
+      [ISA_Zfa['fcvtmod.w.d'].rs2]: 'fcvtmod.w.d',
     },
     [FP_FMT.Q]: {
       [ISA_Q['fcvt.w.q'].rs2]:   'fcvt.w.q',
@@ -1503,21 +1609,29 @@ export const ISA_OP_FP = {
       [ISA_Zfhmin['fcvt.h.s'].rs2]:   'fcvt.h.s',
       [ISA_Zfhmin['fcvt.h.d'].rs2]:   'fcvt.h.d',
       [ISA_Zfhmin['fcvt.h.q'].rs2]:   'fcvt.h.q',
+      [ISA_Zfa['fround.h'].rs2]:      'fround.h',
+      [ISA_Zfa['froundnx.h'].rs2]:    'froundnx.h',
     },
     [FP_FMT.S]: {
       [ISA_Zfhmin['fcvt.s.h'].rs2]: 'fcvt.s.h',
       [ISA_D['fcvt.s.d'].rs2]:      'fcvt.s.d',
       [ISA_Q['fcvt.s.q'].rs2]:      'fcvt.s.q',
+      [ISA_Zfa['fround.s'].rs2]:    'fround.s',
+      [ISA_Zfa['froundnx.s'].rs2]:  'froundnx.s',
     },
     [FP_FMT.D]: {
       [ISA_Zfhmin['fcvt.d.h'].rs2]: 'fcvt.d.h',
       [ISA_D['fcvt.d.s'].rs2]:      'fcvt.d.s',
       [ISA_Q['fcvt.d.q'].rs2]:      'fcvt.d.q',
+      [ISA_Zfa['fround.d'].rs2]:    'fround.d',
+      [ISA_Zfa['froundnx.d'].rs2]:  'froundnx.d',
     },
     [FP_FMT.Q]: {
       [ISA_Zfhmin['fcvt.q.h'].rs2]: 'fcvt.q.h',
       [ISA_Q['fcvt.q.s'].rs2]:      'fcvt.q.s',
       [ISA_Q['fcvt.q.d'].rs2]:      'fcvt.q.d',
+      [ISA_Zfa['fround.q'].rs2]:    'fround.q',
+      [ISA_Zfa['froundnx.q'].rs2]:  'froundnx.q',
     },
   },
 }
@@ -2033,7 +2147,7 @@ export const ISA = Object.assign({},
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
-  ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin,
+  ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfa,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -2073,6 +2187,7 @@ export const ISA_Subsets = {
   Zks: ISA_Zks,
   Zk:  ISA_Zk,
   Zicbo: ISA_Zicbo,
+  Zfa: ISA_Zfa,
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,

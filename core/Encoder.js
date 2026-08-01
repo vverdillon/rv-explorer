@@ -6,7 +6,7 @@
  * Copyright (c) 2021-2022 LupLab @ UC Davis
  */
 
-import { BASE, XLEN_MASK, FIELDS, OPCODE, ISA,
+import { BASE, XLEN_MASK, FLI_STRINGS, FIELDS, OPCODE, ISA,
   REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR
 } from './Constants.js'
 
@@ -258,6 +258,7 @@ export class Encoder {
     // Convert to binary representation
     let floatRd = true;
     let floatRs1 = true;
+    let floatRs2 = this.#inst.rs2Int !== true;
     if (this.#inst.funct5[0] === '1') {
       // Conditionally encode rd or rs1 as an int register, based on funct7
       if (this.#inst.funct5[3] === '1') {
@@ -267,8 +268,8 @@ export class Encoder {
       }
     }
     const rd = encReg(dest, floatRd),
-      rs1 = encReg(src1, floatRs1),
-      rs2 = this.#inst.rs2 ?? encReg(src2, true),
+      rs1 = this.#inst.rs1Fli ? encFli(src1) : encReg(src1, floatRs1),
+      rs2 = this.#inst.rs2 ?? encReg(src2, floatRs2),
       funct3 = this.#inst.funct3 ?? encFrm(frm) ?? '111' /* dyn rm */;
 
     // Construct binary instruction
@@ -925,6 +926,15 @@ function encReg(reg, floatReg=false) {
     throw `Register address out of range: "${reg}"`;
   }
   return convertBase(dec, BASE.dec, BASE.bin, 5);
+}
+
+// Zfa fli.*: encodes rs1 from one of the 32 standard floating-point constants
+function encFli(value) {
+  const idx = FLI_STRINGS.indexOf(value);
+  if (idx === -1) {
+    throw `Invalid fli constant: "${value}"`;
+  }
+  return convertBase(idx, BASE.dec, BASE.bin, 5);
 }
 
 // Convert compressed register numbers to binary

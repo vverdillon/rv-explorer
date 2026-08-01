@@ -6,7 +6,7 @@
  * Copyright (c) 2021-2022 LupLab @ UC Davis
  */
 
-import { BASE, XLEN_MASK,
+import { BASE, XLEN_MASK, FLI_STRINGS,
   FIELDS, OPCODE, C_OPCODE, REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
   ISA_OP, ISA_OP_32, ISA_OP_64, ISA_OP_BS, ISA_OP_IMM, ISA_OP_IMM_32, ISA_OP_IMM_64,
   ISA_LOAD, ISA_STORE, ISA_BRANCH, ISA_MISC_MEM, ISA_SYSTEM, ISA_AMO,
@@ -366,8 +366,10 @@ export class Decoder {
     // Convert fields to string representations
     const inst = ISA[this.#mne];
     const useRs2 = inst.rs2 === undefined;
+    const useFli = inst.rs1Fli === true;
     let floatRd = true;
     let floatRs1 = true;
+    let floatRs2 = inst.rs2Int !== true;
     if (funct5[0] === '1') {
       // Conditionally decode rd or rs1 as an int register, based on funct7
       if (funct5[3] === '1') {
@@ -376,8 +378,8 @@ export class Decoder {
         floatRd = false;
       }
     }
-    const src1 = decReg(rs1, floatRs1),
-          src2 = decReg(rs2, true),
+    const src1 = useFli ? decFli(rs1) : decReg(rs1, floatRs1),
+          src2 = decReg(rs2, floatRs2),
           dest = decReg(rd, floatRd);
 
     // Create fragments
@@ -388,7 +390,7 @@ export class Decoder {
       funct5: new Frag(FRAG.OPC, this.#mne, funct5, FIELDS.r_funct5.name),
       fmt:    new Frag(FRAG.OPC, this.#mne, fmt, FIELDS.r_fp_fmt.name),
       rd:     new Frag(FRAG.RD, dest, rd, FIELDS.rd.name),
-      rs1:    new Frag(FRAG.RS1, src1, rs1, FIELDS.rs1.name),
+      rs1:    new Frag(FRAG.RS1, src1, rs1, useFli ? FIELDS.r_fli.name : FIELDS.rs1.name),
       rs2:    new Frag(FRAG.OPC, src2, rs2, FIELDS.rs2.name),
     };
 
@@ -1979,6 +1981,11 @@ function decImmBits(immFields, immBits, uimm = false) {
 // Convert register numbers from binary to string
 function decReg(reg, floatReg=false) {
   return (floatReg ? 'f' : 'x') + parseInt(reg, BASE.bin);
+}
+
+// Zfa fli.*: rs1 selects one of 32 standard floating-point constants
+function decFli(bits) {
+  return FLI_STRINGS[parseInt(bits, BASE.bin)];
 }
 
 // Convert register numbers from binary to ABI name string
