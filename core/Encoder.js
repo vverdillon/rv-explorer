@@ -458,23 +458,32 @@ export class Encoder {
         : encImm(src, FIELDS.rs1.pos[1]);
 
     } else if (this.#inst.funct7 !== undefined) {
-      if (this.#inst.isa === 'Zimop') {
-        // mop.rr.N: rd is a real register, unlike the Svinval-like forms
+      if (this.#inst.realRd) {
+        // mop.rr.N: rd is a real register, unlike the other R-type-like
+        // forms below (sinval.vma/hinval.*/hsv.*/hfence.*)
         const dest = this.#opr[0], src1 = this.#opr[1], src2 = this.#opr[2];
         rd = encReg(dest);
         rs1 = encReg(src1);
         imm = this.#inst.funct7 + encReg(src2);
+      } else if (this.#inst.mem) {
+        // hsv.*: store-like ("hsv.b rs2, (rs1)"), operands reversed
+        // relative to the plain rs1,rs2 pair below
+        const src2 = this.#opr[0], src1 = this.#opr[1];
+        rs1 = encReg(src1);
+        rd = ''.padStart(FIELDS.rd.pos[1], '0');
+        imm = this.#inst.funct7 + encReg(src2);
       } else {
-        // Svinval-like instructions (sinval.vma/hinval.vvma/hinval.gvma):
-        // fixed funct7, rd fixed to 0, rs1/rs2 are real registers
+        // R-type-like instructions with rd fixed to 0
+        // (sinval.vma/hinval.*/hfence.*): fixed funct7, rs1/rs2 real
         const src1 = this.#opr[0], src2 = this.#opr[1];
         rs1 = encReg(src1);
         rd = ''.padStart(FIELDS.rd.pos[1], '0');
         imm = this.#inst.funct7 + encReg(src2);
       }
 
-    } else if (this.#inst.isa === 'Zimop') {
-      // mop.r.N: rd/rs1 are real registers, unlike the fixed-zero trap forms
+    } else if (this.#inst.realRd) {
+      // mop.r.N / H's hlv.*: rd/rs1 are real registers, unlike the
+      // fixed-zero trap forms
       const dest = this.#opr[0], src = this.#opr[1];
       rd = encReg(dest);
       rs1 = encReg(src);

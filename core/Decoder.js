@@ -861,32 +861,27 @@ export class Decoder {
 
     // Trap instructions - determine mnemonic from funct12
     let trap = (typeof this.#mne !== 'string');
-    // Svinval-like instructions (sinval.vma/hinval.vvma/hinval.gvma): fixed
-    // 7-bit funct7 (the top of what would otherwise be funct12), rd fixed
-    // to 0, but rs1/rs2 are real registers rather than fixed to 0
+    // R-type-like instructions (Svinval's sinval.vma/hinval.vvma/
+    // hinval.gvma, H's hsv.*/hfence.vvma/hfence.gvma, Zimop's mop.rr.N):
+    // fixed 7-bit funct7 (the top of what would otherwise be funct12), with
+    // rs1/rs2 as real registers; rd is fixed to 0 unless ISA[mne].realRd
     let rTypeLike = false;
-    // Zimop mop.r.N: fully-fixed funct12 like a trap instruction, but rd
-    // and rs1 are real registers rather than fixed to 0
-    let mopR = false;
-    // Zimop mop.rr.N: same fixed-funct7 shape as the Svinval R-type-like
-    // forms, but rd is also a real register rather than fixed to 0
-    let mopRR = false;
+    // Marks mnemonics whose rd (and, for the funct12-exact shape, rs1 too)
+    // are real registers rather than fixed to 0 - Zimop's mop.r.N/mop.rr.N
+    // and H's hlv.*
+    let realRd = false;
     if (trap) {
       this.#mne = this.#mne[funct12];
       if (this.#mne === undefined) {
         this.#mne = ISA_SYSTEM[funct3][funct12.substring(0, 7)];
-        if (this.#mne !== undefined) {
-          mopRR = this.#mne.startsWith('mop.rr.');
-          rTypeLike = !mopRR;
-        }
-      } else {
-        mopR = this.#mne.startsWith('mop.r.');
+        rTypeLike = this.#mne !== undefined;
       }
       if (this.#mne === undefined) {
         throw "Detected SYSTEM instruction but invalid funct12 field";
       }
+      realRd = ISA[this.#mne].realRd === true;
       // Check registers
-      if (!mopR && !mopRR &&
+      if (!realRd &&
           (rTypeLike ? rd !== '00000' : (rd !== '00000' || rs1 !== '00000'))) {
         throw "Register rd should be 0 for mne " + this.#mne;
       }
@@ -899,7 +894,7 @@ export class Decoder {
     };
 
     // Zimop mop.rr.N - full R-type, rd/rs1/rs2 all real registers
-    if (mopRR) {
+    if (rTypeLike && realRd) {
       const funct7 = funct12.substring(0, 7),
         rs2 = funct12.substring(7);
       const dest = decReg(rd), src1 = decReg(rs1), src2 = decReg(rs2);
@@ -916,30 +911,37 @@ export class Decoder {
       this.binFrags.push(f['funct7'], f['rs2'], f['rs1'], f['funct3'], f['rd'],
         f['opcode']);
 
-    // Svinval-like instructions - create specific fragments and render
+    // Svinval-like instructions / H's hsv.* - create specific fragments and render
     } else if (rTypeLike) {
       const funct7 = funct12.substring(0, 7),
         rs2 = funct12.substring(7);
       const src1 = decReg(rs1), src2 = decReg(rs2);
+      const mem = ISA[this.#mne].mem === true;
 
       f['funct7'] = new Frag(FRAG.OPC, this.#mne, funct7, FIELDS.r_funct7.name);
       f['rs2'] = new Frag(FRAG.RS2, src2, rs2, FIELDS.rs2.name);
-      f['rs1'] = new Frag(FRAG.RS1, src1, rs1, FIELDS.rs1.name);
+      f['rs1'] = new Frag(FRAG.RS1, src1, rs1, FIELDS.rs1.name, mem);
       f['rd']  = new Frag(FRAG.UNSD, this.#mne, rd, FIELDS.rd.name);
 
-      // Assembly fragments in order of instruction
-      this.asmFrags.push(f['opcode'], f['rs1'], f['rs2']);
+      // Assembly fragments in order of instruction - hsv.* is store-like
+      // ("hsv.b rs2, (rs1)"), the others take a plain "rs1, rs2" pair
+      if (mem) {
+        this.asmFrags.push(f['opcode'], f['rs2'], f['rs1']);
+      } else {
+        this.asmFrags.push(f['opcode'], f['rs1'], f['rs2']);
+      }
 
       // Binary fragments from MSB to LSB
       this.binFrags.push(f['funct7'], f['rs2'], f['rs1'], f['funct3'], f['rd'],
         f['opcode']);
 
-    // Zimop mop.r.N - I-type, funct12 fixed, rd/rs1 real registers
-    } else if (mopR) {
+    // Zimop mop.r.N / H's hlv.* - I-type, funct12 fixed, rd/rs1 real registers
+    } else if (realRd) {
       const dest = decReg(rd), src = decReg(rs1);
+      const mem = ISA[this.#mne].mem === true;
 
       f['rd'] = new Frag(FRAG.RD, dest, rd, FIELDS.rd.name);
-      f['rs1'] = new Frag(FRAG.RS1, src, rs1, FIELDS.rs1.name);
+      f['rs1'] = new Frag(FRAG.RS1, src, rs1, FIELDS.rs1.name, mem);
       f['funct12'] = new Frag(FRAG.OPC, this.#mne, funct12, FIELDS.i_funct12.name);
 
       // Assembly fragments in order of instruction

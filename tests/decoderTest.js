@@ -769,6 +769,40 @@ function dec_zicfiss_amo_ssamoswapd() {
 }
 
 /*
+ * H extension
+ */
+function dec_h_system_hfencevvma() {
+    let inst = new Instruction('22628073');
+    assertEq(inst.asm, 'hfence.vvma x5, x6');
+}
+
+function dec_h_system_hlvb() {
+    let inst = new Instruction('6005c573');
+    let instAbi = new Instruction('6005c573', { ABI:true });
+    assertEq(inst.asm, 'hlv.b x10, (x11)');
+    assertEq(instAbi.asm, 'hlv.b a0, (a1)');
+}
+
+function dec_h_system_hlvxhu() {
+    let inst = new Instruction('6435c573');
+    assertEq(inst.asm, 'hlvx.hu x10, (x11)');
+}
+
+function dec_h_system_hlvd() {
+    let inst = new Instruction('6c05c573', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'hlv.d x10, (x11)');
+    assertEq(inst.isa, 'RV64H');
+}
+
+function dec_h_system_hsvw() {
+    // hsv.* is store-shaped: value (rs2) rendered before address (rs1)
+    let inst = new Instruction('6ac5c073');
+    let instAbi = new Instruction('6ac5c073', { ABI:true });
+    assertEq(inst.asm, 'hsv.w x12, (x11)');
+    assertEq(instAbi.asm, 'hsv.w a2, (a1)');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1198,6 +1232,11 @@ batchTests('Decoder Tests', [
     ['Dec - Zimop    - SYSTEM    - mop.rr.7', dec_zimop_system_moprr7],
     ['Dec - Zicfiss  - AMO       - ssamoswap.w', dec_zicfiss_amo_ssamoswapw],
     ['Dec - Zicfiss  - AMO       - ssamoswap.d', dec_zicfiss_amo_ssamoswapd],
+    ['Dec - H        - SYSTEM    - hfence.vvma', dec_h_system_hfencevvma],
+    ['Dec - H        - SYSTEM    - hlv.b', dec_h_system_hlvb],
+    ['Dec - H        - SYSTEM    - hlvx.hu', dec_h_system_hlvxhu],
+    ['Dec - H        - SYSTEM    - hlv.d', dec_h_system_hlvd],
+    ['Dec - H        - SYSTEM    - hsv.w', dec_h_system_hsvw],
 ]);
 
 // Newline

@@ -940,6 +940,28 @@ function enc_zicfiss_amo_ssamoswapd() {
     assertEq(inst.isa, 'RV64Zicfiss');
 }
 
+/*
+ * H extension
+ */
+function enc_h_system_hfencegvma() {
+    let inst = new Instruction('hfence.gvma x0, x0');
+    assertEq(inst.hex, '62000073');
+}
+
+function enc_h_system_hlvwu() {
+    let inst = new Instruction('hlv.wu x10, (x11)');
+    let instAbi = new Instruction('hlv.wu a0, (a1)');
+    assertEq(inst.hex, '6815c573');
+    assertEq(instAbi.hex, inst.hex);
+    assertEq(inst.isa, 'RV64H');
+}
+
+function enc_h_system_hsvd() {
+    let inst = new Instruction('hsv.d x12, (x11)');
+    assertEq(inst.hex, '6ec5c073');
+    assertEq(inst.isa, 'RV64H');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1072,6 +1094,9 @@ batchTests('Encoder Tests', [
     ['Enc - Zimop    - SYSTEM    - mop.rr.0', enc_zimop_system_moprr0],
     ['Enc - Zicfiss  - AMO       - ssamoswap.w', enc_zicfiss_amo_ssamoswapw],
     ['Enc - Zicfiss  - AMO       - ssamoswap.d', enc_zicfiss_amo_ssamoswapd],
+    ['Enc - H        - SYSTEM    - hfence.gvma', enc_h_system_hfencegvma],
+    ['Enc - H        - SYSTEM    - hlv.wu', enc_h_system_hlvwu],
+    ['Enc - H        - SYSTEM    - hsv.d', enc_h_system_hsvd],
 ]);
 
 // Newline

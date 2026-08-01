@@ -1118,6 +1118,32 @@ export const ISA_Svinval = {
   'hinval.gvma': { isa: 'Svinval_H', fmt: 'R-type', funct7: '0110011', funct3: '000', opcode: OPCODE.SYSTEM },
 }
 
+// H (hypervisor) instruction set
+export const ISA_H = {
+  // hfence.*: R-type-like, fixed funct7, rd fixed to 0, rs1/rs2 real
+  'hfence.vvma': { isa: 'H', fmt: 'R-type', funct7: '0010001', funct3: '000', opcode: OPCODE.SYSTEM },
+  'hfence.gvma': { isa: 'H', fmt: 'R-type', funct7: '0110001', funct3: '000', opcode: OPCODE.SYSTEM },
+
+  // hlv.*: I-type-like, fixed funct12, rd/rs1 real (realRd); mem marks
+  // rs1 as a load address, rendered "(rs1)" like lb/lw
+  'hlv.b':   { isa: 'H',     fmt: 'I-type', funct12: '011000000000', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+  'hlv.bu':  { isa: 'H',     fmt: 'I-type', funct12: '011000000001', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+  'hlv.h':   { isa: 'H',     fmt: 'I-type', funct12: '011001000000', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+  'hlv.hu':  { isa: 'H',     fmt: 'I-type', funct12: '011001000001', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+  'hlvx.hu': { isa: 'H',     fmt: 'I-type', funct12: '011001000011', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+  'hlv.w':   { isa: 'H',     fmt: 'I-type', funct12: '011010000000', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+  'hlvx.wu': { isa: 'H',     fmt: 'I-type', funct12: '011010000011', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+  'hlv.wu':  { isa: 'RV64H', fmt: 'I-type', funct12: '011010000001', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+  'hlv.d':   { isa: 'RV64H', fmt: 'I-type', funct12: '011011000000', funct3: '100', realRd: true, mem: true, opcode: OPCODE.SYSTEM },
+
+  // hsv.*: R-type-like, fixed funct7, rd fixed to 0, rs1/rs2 real; mem
+  // marks rs1 as a store address, rendered "(rs1)" like sb/sw
+  'hsv.b': { isa: 'H',     fmt: 'R-type', funct7: '0110001', funct3: '100', mem: true, opcode: OPCODE.SYSTEM },
+  'hsv.h': { isa: 'H',     fmt: 'R-type', funct7: '0110011', funct3: '100', mem: true, opcode: OPCODE.SYSTEM },
+  'hsv.w': { isa: 'H',     fmt: 'R-type', funct7: '0110101', funct3: '100', mem: true, opcode: OPCODE.SYSTEM },
+  'hsv.d': { isa: 'RV64H', fmt: 'R-type', funct7: '0110111', funct3: '100', mem: true, opcode: OPCODE.SYSTEM },
+}
+
 // Builds mop.r.N's 12-bit funct12: N's 5 bits are scattered as bit30,
 // bits[27:26], bits[21:20] (MSB to LSB) amongst otherwise-fixed bits
 function mopRFunct12(n) {
@@ -1138,20 +1164,27 @@ function mopRRFunct7(n) {
 // future extensions to repurpose
 export const ISA_Zimop = {}
 for (let n = 0; n < 32; n++) {
-  ISA_Zimop[`mop.r.${n}`] = { isa: 'Zimop', fmt: 'I-type', funct12: mopRFunct12(n), funct3: '100', opcode: OPCODE.SYSTEM };
+  ISA_Zimop[`mop.r.${n}`] = { isa: 'Zimop', fmt: 'I-type', funct12: mopRFunct12(n), funct3: '100', realRd: true, opcode: OPCODE.SYSTEM };
 }
 for (let n = 0; n < 8; n++) {
-  ISA_Zimop[`mop.rr.${n}`] = { isa: 'Zimop', fmt: 'R-type', funct7: mopRRFunct7(n), funct3: '100', opcode: OPCODE.SYSTEM };
+  ISA_Zimop[`mop.rr.${n}`] = { isa: 'Zimop', fmt: 'R-type', funct7: mopRRFunct7(n), funct3: '100', realRd: true, opcode: OPCODE.SYSTEM };
 }
 
-// Zimop dispatch bucket for ISA_SYSTEM: mop.r.N's 12-bit funct12 keys and
-// mop.rr.N's 7-bit funct7 keys coexist here (safe - different lengths)
-const ISA_SYSTEM_ZIMOP = {}
+// ISA_SYSTEM dispatch bucket for funct3='100': Zimop's mop.r.N (12-bit exact
+// keys) and mop.rr.N (7-bit prefix keys) coexist with H's hlv.* (12-bit
+// exact) and hsv.* (7-bit prefix) - safe since key lengths never collide
+const ISA_SYSTEM_100 = {}
 for (let n = 0; n < 32; n++) {
-  ISA_SYSTEM_ZIMOP[ISA_Zimop[`mop.r.${n}`].funct12] = `mop.r.${n}`;
+  ISA_SYSTEM_100[ISA_Zimop[`mop.r.${n}`].funct12] = `mop.r.${n}`;
 }
 for (let n = 0; n < 8; n++) {
-  ISA_SYSTEM_ZIMOP[ISA_Zimop[`mop.rr.${n}`].funct7] = `mop.rr.${n}`;
+  ISA_SYSTEM_100[ISA_Zimop[`mop.rr.${n}`].funct7] = `mop.rr.${n}`;
+}
+for (const name of ['hlv.b', 'hlv.bu', 'hlv.h', 'hlv.hu', 'hlvx.hu', 'hlv.w', 'hlvx.wu', 'hlv.wu', 'hlv.d']) {
+  ISA_SYSTEM_100[ISA_H[name].funct12] = name;
+}
+for (const name of ['hsv.b', 'hsv.h', 'hsv.w', 'hsv.d']) {
+  ISA_SYSTEM_100[ISA_H[name].funct7] = name;
 }
 
 
@@ -1454,11 +1487,12 @@ export const ISA_SYSTEM = {
     [ISA_Svinval['sinval.vma'].funct7]:   'sinval.vma',
     [ISA_Svinval['hinval.vvma'].funct7]:  'hinval.vvma',
     [ISA_Svinval['hinval.gvma'].funct7]:  'hinval.gvma',
+    [ISA_H['hfence.vvma'].funct7]:        'hfence.vvma',
+    [ISA_H['hfence.gvma'].funct7]:        'hfence.gvma',
   },
-  // Zimop: funct3='100' is otherwise unused on SYSTEM. mop.r.N (12-bit
-  // exact keys) and mop.rr.N (7-bit prefix keys, same fallback mechanism
-  // as the Svinval R-type-like forms above) coexist in this one object
-  [ISA_Zimop['mop.r.0'].funct3]: ISA_SYSTEM_ZIMOP,
+  // funct3='100' is otherwise unused on SYSTEM: Zimop's mop.r.N/mop.rr.N
+  // and H's hlv.*/hsv.* share this one dispatch object (ISA_SYSTEM_100)
+  [ISA_Zimop['mop.r.0'].funct3]: ISA_SYSTEM_100,
   [ISA_Zicsr['csrrw'].funct3]:  'csrrw',
   [ISA_Zicsr['csrrs'].funct3]:  'csrrs',
   [ISA_Zicsr['csrrc'].funct3]:  'csrrc',
@@ -2367,7 +2401,7 @@ export const ISA = Object.assign({},
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfa,
-  ISA_Smrnmi, ISA_Svinval, ISA_Zimop, ISA_Zicfiss,
+  ISA_Smrnmi, ISA_Svinval, ISA_Zimop, ISA_Zicfiss, ISA_H,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -2424,5 +2458,6 @@ export const ISA_Subsets = {
   Svinval: ISA_Svinval,
   Zimop: ISA_Zimop,
   Zicfiss: ISA_Zicfiss,
+  H: ISA_H,
   Priv: ISA_Priv
 }
