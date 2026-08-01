@@ -118,12 +118,44 @@ body {
     grid-template-rows: 5.5ch 1fr;
 }
 
+#isa-search-container{
+    position: relative;
+    margin: 0 0 2ch 0;
+    border: 1px solid var(--color-fg);
+    height: 3.5ch;
+    box-sizing: border-box;
+}
+
+#isa-search-input {
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0% 4% 0% 4%;
+
+    border: none;
+    background-color: transparent;
+
+    font-size: inherit;
+    color: inherit;
+    font-family: inherit;
+}
+
+#isa-search-input:focus-visible {
+    outline: none;
+}
+
 #isa-sets-container{
+    box-sizing: border-box;
     padding: 1ch;
     overflow: auto;
     min-height: 10ch;
     border: 1px solid var(--color-fg);
     background-color: var(--color-bg);
+    display: none;
+}
+
+#isa-sets-container details.filtered-out,
+#isa-sets-container button.filtered-out {
     display: none;
 }
 

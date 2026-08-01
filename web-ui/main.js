@@ -560,10 +560,6 @@ isaSearchInput.addEventListener('input', () => {
 
   for (const isaSet of isaSideBar.children) {
     const summary = isaSet.querySelector('summary');
-    if (!summary) {
-      // The "Unratified / Draft Extensions" heading isn't a <details> set
-      continue;
-    }
     const extMatches = summary.textContent.toLowerCase().includes(query);
     let anyInstMatches = false;
 
