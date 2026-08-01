@@ -735,6 +735,24 @@ function dec_svinval_system_hinvalvvma() {
 }
 
 /*
+ * Zimop extension
+ */
+function dec_zimop_system_mopr0() {
+    let inst = new Instruction('81c342f3');
+    assertEq(inst.asm, 'mop.r.0 x5, x6');
+}
+
+function dec_zimop_system_mopr31() {
+    let inst = new Instruction('cdf342f3');
+    assertEq(inst.asm, 'mop.r.31 x5, x6');
+}
+
+function dec_zimop_system_moprr7() {
+    let inst = new Instruction('ce7342f3');
+    assertEq(inst.asm, 'mop.rr.7 x5, x6, x7');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1159,6 +1177,9 @@ batchTests('Decoder Tests', [
     ['Dec - Svinval  - SYSTEM    - sfence.w.inval', dec_svinval_system_sfencewinval],
     ['Dec - Svinval  - SYSTEM    - sinval.vma', dec_svinval_system_sinvalvma],
     ['Dec - Svinval  - SYSTEM    - hinval.vvma', dec_svinval_system_hinvalvvma],
+    ['Dec - Zimop    - SYSTEM    - mop.r.0', dec_zimop_system_mopr0],
+    ['Dec - Zimop    - SYSTEM    - mop.r.31', dec_zimop_system_mopr31],
+    ['Dec - Zimop    - SYSTEM    - mop.rr.7', dec_zimop_system_moprr7],
 ]);
 
 // Newline

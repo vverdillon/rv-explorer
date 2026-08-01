@@ -458,13 +458,27 @@ export class Encoder {
         : encImm(src, FIELDS.rs1.pos[1]);
 
     } else if (this.#inst.funct7 !== undefined) {
-      // Svinval-like instructions (sinval.vma/hinval.vvma/hinval.gvma):
-      // fixed funct7, rd fixed to 0, rs1/rs2 are real registers
-      const src1 = this.#opr[0], src2 = this.#opr[1];
+      if (this.#inst.isa === 'Zimop') {
+        // mop.rr.N: rd is a real register, unlike the Svinval-like forms
+        const dest = this.#opr[0], src1 = this.#opr[1], src2 = this.#opr[2];
+        rd = encReg(dest);
+        rs1 = encReg(src1);
+        imm = this.#inst.funct7 + encReg(src2);
+      } else {
+        // Svinval-like instructions (sinval.vma/hinval.vvma/hinval.gvma):
+        // fixed funct7, rd fixed to 0, rs1/rs2 are real registers
+        const src1 = this.#opr[0], src2 = this.#opr[1];
+        rs1 = encReg(src1);
+        rd = ''.padStart(FIELDS.rd.pos[1], '0');
+        imm = this.#inst.funct7 + encReg(src2);
+      }
 
-      rs1 = encReg(src1);
-      rd = ''.padStart(FIELDS.rd.pos[1], '0');
-      imm = this.#inst.funct7 + encReg(src2);
+    } else if (this.#inst.isa === 'Zimop') {
+      // mop.r.N: rd/rs1 are real registers, unlike the fixed-zero trap forms
+      const dest = this.#opr[0], src = this.#opr[1];
+      rd = encReg(dest);
+      rs1 = encReg(src);
+      imm = this.#inst.funct12;
 
     } else {
       // Trap instructions

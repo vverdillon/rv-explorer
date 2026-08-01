@@ -1109,6 +1109,42 @@ export const ISA_Svinval = {
   'hinval.gvma': { isa: 'Svinval_H', fmt: 'R-type', funct7: '0110011', funct3: '000', opcode: OPCODE.SYSTEM },
 }
 
+// Builds mop.r.N's 12-bit funct12: N's 5 bits are scattered as bit30,
+// bits[27:26], bits[21:20] (MSB to LSB) amongst otherwise-fixed bits
+function mopRFunct12(n) {
+  const b = n.toString(2).padStart(5, '0');
+  return '1' + b[0] + '00' + b[1] + b[2] + '0111' + b[3] + b[4];
+}
+
+// Builds mop.rr.N's 7-bit funct7: N's 3 bits are scattered as bit30,
+// bits[27:26] (MSB to LSB) amongst otherwise-fixed bits
+function mopRRFunct7(n) {
+  const b = n.toString(2).padStart(3, '0');
+  return '1' + b[0] + '00' + b[1] + b[2] + '1';
+}
+
+// Zimop (may-be-operations) instruction set: 32-bit counterpart to Zcmop,
+// reserving 32 mop.r.N (I-type, rd/rs1) and 8 mop.rr.N (R-type, rd/rs1/rs2)
+// encodings on the SYSTEM opcode (funct3='100', otherwise unused there) for
+// future extensions to repurpose
+export const ISA_Zimop = {}
+for (let n = 0; n < 32; n++) {
+  ISA_Zimop[`mop.r.${n}`] = { isa: 'Zimop', fmt: 'I-type', funct12: mopRFunct12(n), funct3: '100', opcode: OPCODE.SYSTEM };
+}
+for (let n = 0; n < 8; n++) {
+  ISA_Zimop[`mop.rr.${n}`] = { isa: 'Zimop', fmt: 'R-type', funct7: mopRRFunct7(n), funct3: '100', opcode: OPCODE.SYSTEM };
+}
+
+// Zimop dispatch bucket for ISA_SYSTEM: mop.r.N's 12-bit funct12 keys and
+// mop.rr.N's 7-bit funct7 keys coexist here (safe - different lengths)
+const ISA_SYSTEM_ZIMOP = {}
+for (let n = 0; n < 32; n++) {
+  ISA_SYSTEM_ZIMOP[ISA_Zimop[`mop.r.${n}`].funct12] = `mop.r.${n}`;
+}
+for (let n = 0; n < 8; n++) {
+  ISA_SYSTEM_ZIMOP[ISA_Zimop[`mop.rr.${n}`].funct7] = `mop.rr.${n}`;
+}
+
 
 // ISA per opcode
 export const ISA_OP = {
@@ -1410,6 +1446,10 @@ export const ISA_SYSTEM = {
     [ISA_Svinval['hinval.vvma'].funct7]:  'hinval.vvma',
     [ISA_Svinval['hinval.gvma'].funct7]:  'hinval.gvma',
   },
+  // Zimop: funct3='100' is otherwise unused on SYSTEM. mop.r.N (12-bit
+  // exact keys) and mop.rr.N (7-bit prefix keys, same fallback mechanism
+  // as the Svinval R-type-like forms above) coexist in this one object
+  [ISA_Zimop['mop.r.0'].funct3]: ISA_SYSTEM_ZIMOP,
   [ISA_Zicsr['csrrw'].funct3]:  'csrrw',
   [ISA_Zicsr['csrrs'].funct3]:  'csrrs',
   [ISA_Zicsr['csrrc'].funct3]:  'csrrc',
@@ -2314,7 +2354,7 @@ export const ISA = Object.assign({},
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfa,
-  ISA_Smrnmi, ISA_Svinval,
+  ISA_Smrnmi, ISA_Svinval, ISA_Zimop,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -2369,5 +2409,6 @@ export const ISA_Subsets = {
   Zfhmin: ISA_Zfhmin,
   Smrnmi: ISA_Smrnmi,
   Svinval: ISA_Svinval,
+  Zimop: ISA_Zimop,
   Priv: ISA_Priv
 }

@@ -911,6 +911,19 @@ function enc_svinval_system_hinvalgvma() {
     assertEq(inst.isa, 'Svinval_H');
 }
 
+/*
+ * Zimop extension
+ */
+function enc_zimop_system_mopr17() {
+    let inst = new Instruction('mop.r.17 x5, x6');
+    assertEq(inst.hex, 'c1d342f3');
+}
+
+function enc_zimop_system_moprr0() {
+    let inst = new Instruction('mop.rr.0 x5, x6, x7');
+    assertEq(inst.hex, '827342f3');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1039,6 +1052,8 @@ batchTests('Encoder Tests', [
     ['Enc - Svinval  - SYSTEM    - sfence.inval.ir', enc_svinval_system_sfenceinvalir],
     ['Enc - Svinval  - SYSTEM    - sinval.vma', enc_svinval_system_sinvalvma],
     ['Enc - Svinval  - SYSTEM    - hinval.gvma', enc_svinval_system_hinvalgvma],
+    ['Enc - Zimop    - SYSTEM    - mop.r.17', enc_zimop_system_mopr17],
+    ['Enc - Zimop    - SYSTEM    - mop.rr.0', enc_zimop_system_moprr0],
 ]);
 
 // Newline
