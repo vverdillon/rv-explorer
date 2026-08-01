@@ -1016,6 +1016,36 @@ function enc_v_cfg_vsetvl() {
     assertEq(inst.hex, '8062f057');
 }
 
+/*
+ * V extension - loads and stores
+ */
+function enc_v_mem_vse8v() {
+    let inst = new Instruction('vse8.v v1, (x10)');
+    assertEq(inst.hex, '020500a7');
+    assertEq(inst.isa, 'V');
+}
+
+function enc_v_mem_vsoxei32v() {
+    let inst = new Instruction('vsoxei32.v v1, (x10), v2');
+    assertEq(inst.hex, '0e2560a7');
+}
+
+function enc_v_mem_vsmv() {
+    let inst = new Instruction('vsm.v v1, (x10)');
+    assertEq(inst.hex, '02b500a7');
+}
+
+function enc_v_mem_vs4rv() {
+    let inst = new Instruction('vs4r.v v4, (x10)');
+    assertEq(inst.hex, '62850227');
+}
+
+function enc_v_mem_vlseg2e32v() {
+    // Segment loads/stores mechanically insert "seg<N>" into a base mnemonic
+    let inst = new Instruction('vlseg2e32.v v1, (x10)');
+    assertEq(inst.hex, '22056087');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1159,6 +1189,11 @@ batchTests('Encoder Tests', [
     ['Enc - V        - V-cfg     - vsetvli', enc_v_cfg_vsetvli],
     ['Enc - V        - V-cfg     - vsetivli', enc_v_cfg_vsetivli],
     ['Enc - V        - V-cfg     - vsetvl', enc_v_cfg_vsetvl],
+    ['Enc - V        - V-mem     - vse8.v', enc_v_mem_vse8v],
+    ['Enc - V        - V-mem     - vsoxei32.v', enc_v_mem_vsoxei32v],
+    ['Enc - V        - V-mem     - vsm.v', enc_v_mem_vsmv],
+    ['Enc - V        - V-mem     - vs4r.v', enc_v_mem_vs4rv],
+    ['Enc - V        - V-mem     - vlseg2e32.v', enc_v_mem_vlseg2e32v],
 ]);
 
 // Newline

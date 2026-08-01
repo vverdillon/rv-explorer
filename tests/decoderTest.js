@@ -1143,6 +1143,35 @@ function dec_v_cfg_vsetvl() {
     assertEq(inst.asm, 'vsetvl x5, x6, x7');
 }
 
+/*
+ * V extension - loads and stores
+ */
+function dec_v_mem_vle32v() {
+    let inst = new Instruction('02056087');
+    assertEq(inst.asm, 'vle32.v v1, (x10)');
+    assertEq(inst.isa, 'V');
+}
+
+function dec_v_mem_vlse16v() {
+    let inst = new Instruction('0ab55087');
+    assertEq(inst.asm, 'vlse16.v v1, (x10), x11');
+}
+
+function dec_v_mem_vluxei32v() {
+    let inst = new Instruction('06256087');
+    assertEq(inst.asm, 'vluxei32.v v1, (x10), v2');
+}
+
+function dec_v_mem_vlmv() {
+    let inst = new Instruction('02b50087');
+    assertEq(inst.asm, 'vlm.v v1, (x10)');
+}
+
+function dec_v_mem_vl2re8v() {
+    let inst = new Instruction('22850107');
+    assertEq(inst.asm, 'vl2re8.v v2, (x10)');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -1303,6 +1332,11 @@ batchTests('Decoder Tests', [
     ['Dec - V        - V-cfg     - vsetvli', dec_v_cfg_vsetvli],
     ['Dec - V        - V-cfg     - vsetivli', dec_v_cfg_vsetivli],
     ['Dec - V        - V-cfg     - vsetvl', dec_v_cfg_vsetvl],
+    ['Dec - V        - V-mem     - vle32.v', dec_v_mem_vle32v],
+    ['Dec - V        - V-mem     - vlse16.v', dec_v_mem_vlse16v],
+    ['Dec - V        - V-mem     - vluxei32.v', dec_v_mem_vluxei32v],
+    ['Dec - V        - V-mem     - vlm.v', dec_v_mem_vlmv],
+    ['Dec - V        - V-mem     - vl2re8.v', dec_v_mem_vl2re8v],
 ]);
 
 // Newline

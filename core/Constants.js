@@ -1254,6 +1254,81 @@ export const V_LMUL = {
   '101': 'mf8', '110': 'mf4', '111': 'mf2',
 }
 
+// Vector loads/stores share OPCODE.LOAD_FP/STORE_FP with scalar F/D/Q/Zfh,
+// disambiguated by the width field being one of these 4 values (disjoint
+// from FP_WIDTH's H/S/D/Q codes 001-100)
+export const V_EEW = {
+  '000': 8, '101': 16, '110': 32, '111': 64,
+}
+
+// mop='00' sub-selector fixed values occupying the vs2/rs2 bit position
+// (24:20) when it isn't a real register
+const V_MEM_UNIT_LUMOP = '00000';
+const V_MEM_FF_LUMOP = '10000';
+const V_MEM_MASK_LUMOP = '01011';
+const V_MEM_WHOLEREG_LUMOP = '01000';
+
+// Whole-register load/store group size <-> its 3-bit nf field encoding
+export const V_WHOLEREG_NF = {
+  1: '000', 2: '001', 4: '011', 8: '111',
+}
+
+// V vector loads/stores: unit-stride, strided, indexed (ordered/unordered),
+// fault-only-first, whole-register, and mask forms. Segment (nf > 0)
+// variants aren't pre-registered here as separate entries - there'd be
+// hundreds of them - but are instead handled generically via vSegName()/
+// vParseSegName() below, which mechanically insert/extract a "seg<N>"
+// infix into/from these base (nf=0) mnemonics.
+for (const [w, eew] of Object.entries(V_EEW)) {
+  ISA_V[`vle${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.LOAD_FP, width: w, mop: '00', lumop: V_MEM_UNIT_LUMOP, vCat: 'unit', seg: true };
+  ISA_V[`vse${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.STORE_FP, width: w, mop: '00', lumop: V_MEM_UNIT_LUMOP, vCat: 'unit', seg: true };
+  ISA_V[`vle${eew}ff.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.LOAD_FP, width: w, mop: '00', lumop: V_MEM_FF_LUMOP, vCat: 'ff', seg: true };
+  ISA_V[`vlse${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.LOAD_FP, width: w, mop: '10', vCat: 'strided', seg: true };
+  ISA_V[`vsse${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.STORE_FP, width: w, mop: '10', vCat: 'strided', seg: true };
+  ISA_V[`vluxei${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.LOAD_FP, width: w, mop: '01', vCat: 'indexed', seg: true };
+  ISA_V[`vsuxei${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.STORE_FP, width: w, mop: '01', vCat: 'indexed', seg: true };
+  ISA_V[`vloxei${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.LOAD_FP, width: w, mop: '11', vCat: 'indexed', seg: true };
+  ISA_V[`vsoxei${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.STORE_FP, width: w, mop: '11', vCat: 'indexed', seg: true };
+}
+
+ISA_V['vlm.v'] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.LOAD_FP, width: '000', mop: '00', lumop: V_MEM_MASK_LUMOP, vCat: 'mask', seg: false };
+ISA_V['vsm.v'] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.STORE_FP, width: '000', mop: '00', lumop: V_MEM_MASK_LUMOP, vCat: 'mask', seg: false };
+
+for (const [count, nfBits] of Object.entries(V_WHOLEREG_NF)) {
+  for (const [w, eew] of Object.entries(V_EEW)) {
+    ISA_V[`vl${count}re${eew}.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.LOAD_FP, width: w, mop: '00', lumop: V_MEM_WHOLEREG_LUMOP, vCat: 'wholereg', nf: nfBits, seg: false };
+  }
+  ISA_V[`vs${count}r.v`] = { isa: 'V', fmt: 'V-mem', opcode: OPCODE.STORE_FP, width: '000', mop: '00', lumop: V_MEM_WHOLEREG_LUMOP, vCat: 'wholereg', nf: nfBits, seg: false };
+}
+
+// Segment load/store mnemonics (vlseg2e8.v, vlsseg3e16.v, vluxseg4ei32.v,
+// etc.) are entirely mechanical transforms of a base (nf=0) mnemonic:
+// "seg<N>" is inserted right after the category prefix, before the "e..."
+// element-width part. Not every prefix combination is valid on nf=0 (e.g.
+// mask/whole-register never take segments), but the string transform
+// itself is uniform across the categories that do.
+const V_SEG_PREFIXES = ['vlux', 'vlox', 'vsux', 'vsox', 'vls', 'vss', 'vl', 'vs'];
+
+export function vSegName(base, nf) {
+  if (nf === 0) {
+    return base;
+  }
+  const nFields = nf + 1;
+  const prefix = V_SEG_PREFIXES.find(p => base.startsWith(p));
+  if (prefix === undefined) {
+    throw `Internal error: cannot build segment name for "${base}"`;
+  }
+  return prefix + 'seg' + nFields + base.substring(prefix.length);
+}
+
+export function vParseSegName(name) {
+  const m = /^(vlux|vlox|vsux|vsox|vls|vss|vl|vs)seg([2-8])(.*)$/.exec(name);
+  if (m === null) {
+    return null;
+  }
+  return { base: m[1] + m[3], nf: parseInt(m[2], 10) - 1 };
+}
+
 
 // ISA per opcode
 export const ISA_OP = {

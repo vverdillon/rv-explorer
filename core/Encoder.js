@@ -8,7 +8,7 @@
 
 import { BASE, XLEN_MASK, FLI_STRINGS, FIELDS, OPCODE, ISA,
   REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
-  V_SEW, V_LMUL
+  V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vParseSegName
 } from './Constants.js'
 
 import { COPTS_ISA } from './Config.js'
@@ -35,6 +35,9 @@ export class Encoder {
   #inst;
   #mne;
   #opr;
+  // Vector load/store segment count (nf field), when this.#mne was a
+  // segmented mnemonic (e.g. vlseg3e8.v) resolved down to its base entry
+  #vNf = 0;
 
   /**
    * Creates an Encoder to convert an assembly instruction to binary
@@ -62,6 +65,17 @@ export class Encoder {
 
     // Find instruction based on given mnemonic
     this.#inst = ISA[this.#mne];
+    if (this.#inst === undefined) {
+      // Vector load/store segment mnemonics (vlseg3e8.v, vluxseg2ei16.v,
+      // etc.) aren't pre-registered individually - resolve the "seg<N>"
+      // infix back to a base mnemonic plus its nf field value
+      const parsed = vParseSegName(this.#mne);
+      const base = parsed && ISA[parsed.base];
+      if (base?.fmt === 'V-mem' && base.seg) {
+        this.#inst = base;
+        this.#vNf = parsed.nf;
+      }
+    }
     if (this.#inst === undefined) {
       throw "Invalid mnemonic: " + this.#mne;
     }
@@ -309,6 +323,11 @@ export class Encoder {
    * Encodes LOAD instruction
    */
   #encodeLOAD() {
+    if (this.#inst.fmt === 'V-mem') {
+      this.#encodeVMem(true);
+      return;
+    }
+
     // Get operands
     const dest = this.#opr[0], offset = this.#opr[1], base = this.#opr[2];
 
@@ -508,6 +527,11 @@ export class Encoder {
    * Encodes STORE instruction
    */
   #encodeSTORE() {
+    if (this.#inst.fmt === 'V-mem') {
+      this.#encodeVMem(false);
+      return;
+    }
+
     // Get operands
     const src = this.#opr[0], offset = this.#opr[1], base = this.#opr[2];
 
@@ -635,6 +659,39 @@ export class Encoder {
       const uimm = encImm(this.#opr[1], 5);
       this.bin = '11' + '00' + vtype + uimm + this.#inst.funct3 + rd + this.#inst.opcode;
     }
+  }
+
+  // V vector loads/stores: mirrors Decoder.js's #decodeVMem field layout.
+  // this.#inst is always the base (nf=0) ISA entry - segment mnemonics were
+  // already resolved to it (with this.#vNf set) back in the constructor.
+  #encodeVMem(isLoad) {
+    const inst = this.#inst;
+    const vdOrVs3 = encVReg(this.#opr[0]);
+    const rs1 = encReg(this.#opr[1]);
+
+    let reg24_20, vm, nf;
+    if (inst.vCat === 'mask') {
+      reg24_20 = inst.lumop;
+      vm = '1';
+      nf = '000';
+    } else if (inst.vCat === 'wholereg') {
+      reg24_20 = inst.lumop;
+      vm = '1';
+      nf = inst.nf;
+    } else {
+      nf = encImm(this.#vNf, 3);
+      let next = 2;
+      if (inst.mop === '10') {
+        reg24_20 = encReg(this.#opr[next++]);
+      } else if (inst.mop === '01' || inst.mop === '11') {
+        reg24_20 = encVReg(this.#opr[next++]);
+      } else {
+        reg24_20 = inst.lumop;
+      }
+      vm = this.#opr[next] === 'v0.t' ? '0' : '1';
+    }
+
+    this.bin = nf + '0' + inst.mop + vm + reg24_20 + rs1 + inst.width + vdOrVs3 + inst.opcode;
   }
 
   /**

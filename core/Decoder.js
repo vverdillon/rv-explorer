@@ -13,7 +13,7 @@ import { BASE, XLEN_MASK, FLI_STRINGS,
   ISA_LOAD_FP, ISA_STORE_FP, ISA_OP_FP,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
   ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP, ISA_C2_ZCMP,
-  V_SEW, V_LMUL,
+  V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vSegName, vParseSegName,
   ISA, FRAG
 } from './Constants.js'
 
@@ -258,9 +258,12 @@ export class Decoder {
         throw "Decoder internal error";
     }
 
-    // Set instruction's format and ISA
-    this.fmt = ISA[this.#mne].fmt;
-    this.isa = this.isa ?? ISA[this.#mne].isa;
+    // Set instruction's format and ISA - vector load/store segment
+    // mnemonics (vlseg3e8.v, etc.) aren't registered in ISA directly;
+    // fall back to their base (nf=0) entry
+    const mneInst = ISA[this.#mne] ?? ISA[vParseSegName(this.#mne)?.base];
+    this.fmt = mneInst.fmt;
+    this.isa = this.isa ?? mneInst.isa;
 
     // Detect mismatch between ISA and configuration
     if (this.#config.ISA === COPTS_ISA.RV32I && /^RV(?:64|128)/.test(this.isa)) {
@@ -473,6 +476,13 @@ export class Decoder {
       rs1 = fields['rs1'],
       funct3 = fields['funct3'],
       rd = fields['rd'];
+
+    // Vector loads share this opcode but use width codes disjoint from
+    // FP_WIDTH's H/S/D/Q (001-100), so funct3 alone disambiguates them
+    if (this.#opcode === OPCODE.LOAD_FP && V_EEW[funct3] !== undefined) {
+      this.#decodeVMem(true);
+      return;
+    }
 
     // Find instruction
     const floatInst = this.#opcode === OPCODE.LOAD_FP;
@@ -1008,6 +1018,14 @@ export class Decoder {
    * Decodes STORE instruction
    */
   #decodeSTORE() {
+    // Vector stores share this opcode but use width codes disjoint from
+    // FP_WIDTH's H/S/D/Q (001-100), so funct3 alone disambiguates them
+    const vFunct3 = getBits(this.#bin, FIELDS.funct3.pos);
+    if (this.#opcode === OPCODE.STORE_FP && V_EEW[vFunct3] !== undefined) {
+      this.#decodeVMem(false);
+      return;
+    }
+
     // Get fields
     const fields = extractSFields(this.#bin);
     const imm_11_5 = fields['imm_11_5'],
@@ -1252,6 +1270,119 @@ export class Decoder {
       this.binFrags.push(f['funct7'], f['rs2'], f['rs1'], f['funct3'],
         f['rd'], f['opcode']);
     }
+  }
+
+  // V vector loads/stores: unit-stride, strided, indexed, fault-only-first,
+  // whole-register, and mask forms, all sharing this field layout. The
+  // mnemonic is entirely mechanical from (mop, the fixed selector normally
+  // occupying the vs2/rs2 position, width, nf), so it's built directly
+  // rather than via a lookup table - see the ISA_V vector-memory entries
+  // in Constants.js for the naming convention.
+  #decodeVMem(isLoad) {
+    const nf = getBits(this.#bin, FIELDS.v_nf.pos),
+      mew = getBits(this.#bin, FIELDS.v_mew.pos),
+      mop = getBits(this.#bin, FIELDS.v_mop.pos),
+      vm = getBits(this.#bin, FIELDS.v_vm.pos),
+      reg24_20 = getBits(this.#bin, FIELDS.rs2.pos),
+      rs1 = getBits(this.#bin, FIELDS.rs1.pos),
+      width = getBits(this.#bin, FIELDS.v_width.pos),
+      vdOrVs3 = getBits(this.#bin, FIELDS.rd.pos);
+
+    if (mew !== '0') {
+      throw 'Detected vector load/store with unsupported mew field';
+    }
+    const eew = V_EEW[width];
+
+    // regKind: what the 24:20 field holds - undefined when it's a fixed
+    // selector (no operand rendered there), 'x' for a real stride register
+    // (strided), or 'v' for a real index-vector register (indexed)
+    let regKind, baseName, noVm = false;
+    if (mop === '10') {
+      regKind = 'x';
+      baseName = isLoad ? `vlse${eew}.v` : `vsse${eew}.v`;
+    } else if (mop === '01' || mop === '11') {
+      regKind = 'v';
+      const ordered = mop === '11';
+      baseName = isLoad
+        ? (ordered ? `vloxei${eew}.v` : `vluxei${eew}.v`)
+        : (ordered ? `vsoxei${eew}.v` : `vsuxei${eew}.v`);
+    } else if (reg24_20 === '00000') {
+      baseName = isLoad ? `vle${eew}.v` : `vse${eew}.v`;
+    } else if (reg24_20 === '10000') {
+      if (!isLoad) {
+        throw 'Detected vector store with invalid sumop field';
+      }
+      baseName = `vle${eew}ff.v`;
+    } else if (reg24_20 === '01011') {
+      noVm = true;
+      if (vm !== '1' || width !== '000' || nf !== '000') {
+        throw 'Detected vector mask load/store with invalid vm/width/nf field';
+      }
+      this.#mne = isLoad ? 'vlm.v' : 'vsm.v';
+    } else if (reg24_20 === '01000') {
+      noVm = true;
+      if (vm !== '1') {
+        throw 'Detected vector whole-register load/store with invalid vm field';
+      }
+      const count = Object.entries(V_WHOLEREG_NF).find(e => e[1] === nf)?.[0];
+      if (count === undefined) {
+        throw 'Detected vector whole-register load/store with invalid nf field';
+      }
+      if (isLoad) {
+        if (eew === undefined || ISA[`vl${count}re${eew}.v`] === undefined) {
+          throw 'Detected vector whole-register load with invalid width field';
+        }
+        this.#mne = `vl${count}re${eew}.v`;
+      } else {
+        if (width !== '000') {
+          throw 'Detected vector whole-register store with invalid width field';
+        }
+        this.#mne = `vs${count}r.v`;
+      }
+    } else {
+      throw 'Detected vector load/store with invalid lumop/sumop field';
+    }
+
+    if (this.#mne === undefined) {
+      if (eew === undefined || ISA[baseName] === undefined) {
+        throw 'Detected vector load/store with invalid width field';
+      }
+      this.#mne = vSegName(baseName, parseInt(nf, BASE.bin));
+    }
+
+    // Convert fields to string representations
+    const base = decReg(rs1);
+    const operand = decVReg(vdOrVs3);
+
+    const f = {
+      opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.opcode.name),
+      nf:     new Frag(FRAG.OPC, this.#mne, nf, FIELDS.v_nf.name),
+      mew:    new Frag(FRAG.UNSD, this.#mne, mew, FIELDS.v_mew.name),
+      mop:    new Frag(FRAG.OPC, this.#mne, mop, FIELDS.v_mop.name),
+      vm:     new Frag(FRAG.OPC, this.#mne, vm, FIELDS.v_vm.name),
+      width:  new Frag(FRAG.OPC, this.#mne, width, FIELDS.v_width.name),
+      rs1:    new Frag(FRAG.RS1, base, rs1, FIELDS.rs1.name, true),
+      reg:    isLoad
+        ? new Frag(FRAG.RD, operand, vdOrVs3, 'vd')
+        : new Frag(FRAG.RS2, operand, vdOrVs3, FIELDS.v_vs3.name),
+    };
+
+    this.asmFrags.push(f['opcode'], f['reg'], f['rs1']);
+
+    if (regKind !== undefined) {
+      const regAsm = regKind === 'x' ? decReg(reg24_20) : decVReg(reg24_20);
+      f['reg24_20'] = new Frag(FRAG.RS2, regAsm, reg24_20, regKind === 'x' ? FIELDS.rs2.name : 'vs2');
+      this.asmFrags.push(f['reg24_20']);
+    } else {
+      f['reg24_20'] = new Frag(FRAG.UNSD, this.#mne, reg24_20, isLoad ? FIELDS.v_lumop.name : FIELDS.v_sumop.name);
+    }
+    if (!noVm && vm === '0') {
+      this.asmFrags.push(new Frag(FRAG.UNSD, 'v0.t', vm, FIELDS.v_vm.name));
+    }
+
+    // Binary fragments from MSB to LSB
+    this.binFrags.push(f['nf'], f['mew'], f['mop'], f['vm'], f['reg24_20'],
+      f['rs1'], f['width'], f['reg'], f['opcode']);
   }
 
   /**
