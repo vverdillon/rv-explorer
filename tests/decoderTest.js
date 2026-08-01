@@ -859,6 +859,20 @@ function dec_zksh_opimm_sm3p0() {
     assertEq(inst.isa, 'Zksh');
 }
 
+/*
+ * Zicbo extension
+ */
+function dec_zicbo_miscmem_cboclean() {
+    let inst = new Instruction('0015200f');
+    assertEq(inst.asm, 'cbo.clean (x10)');
+    assertEq(inst.isa, 'Zicbo');
+}
+
+function dec_zicbo_miscmem_cboinval() {
+    let inst = new Instruction('0005200f');
+    assertEq(inst.asm, 'cbo.inval (x10)');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -978,6 +992,8 @@ batchTests('Decoder Tests', [
     ['Dec - Zknh     - OP        - sha512sig0l', dec_zknh_op_sha512sig0l],
     ['Dec - Zksed    - OP        - sm4ed', dec_zksed_op_sm4ed],
     ['Dec - Zksh     - OP-IMM    - sm3p0', dec_zksh_opimm_sm3p0],
+    ['Dec - Zicbo    - MISC-MEM  - cbo.clean', dec_zicbo_miscmem_cboclean],
+    ['Dec - Zicbo    - MISC-MEM  - cbo.inval', dec_zicbo_miscmem_cboinval],
 ]);
 
 // Newline

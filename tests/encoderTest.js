@@ -762,6 +762,20 @@ function enc_zksh_opimm_sm3p1() {
     assertEq(inst.isa, 'Zksh');
 }
 
+/*
+ * Zicbo extension
+ */
+function enc_zicbo_miscmem_cbozero() {
+    let inst = new Instruction('cbo.zero (x10)');
+    assertEq(inst.hex, '0045200f');
+    assertEq(inst.isa, 'Zicbo');
+}
+
+function enc_zicbo_miscmem_cboflush() {
+    let inst = new Instruction('cbo.flush (x10)');
+    assertEq(inst.hex, '0025200f');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -867,6 +881,8 @@ batchTests('Encoder Tests', [
     ['Enc - Zknh     - OP-IMM    - sha256sum0', enc_zknh_opimm_sha256sum0],
     ['Enc - Zksed    - OP        - sm4ks', enc_zksed_op_sm4ks],
     ['Enc - Zksh     - OP-IMM    - sm3p1', enc_zksh_opimm_sm3p1],
+    ['Enc - Zicbo    - MISC-MEM  - cbo.zero', enc_zicbo_miscmem_cbozero],
+    ['Enc - Zicbo    - MISC-MEM  - cbo.flush', enc_zicbo_miscmem_cboflush],
 ]);
 
 // Newline

@@ -412,6 +412,13 @@ export class Encoder {
       const pred = encMem(predecessor), succ = encMem(successor);
 
       imm = '0000' + pred + succ;
+
+    } else if (this.#mne.startsWith('cbo.')) {
+      // Zicbo cache-block instructions: fixed imm, rs1 is the only operand
+      const base = this.#opr[0];
+
+      rs1 = encReg(base);
+      imm = this.#inst.funct12;
     }
 
     // Construct binary instruction

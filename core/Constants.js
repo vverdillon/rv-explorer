@@ -525,6 +525,15 @@ export const ISA_Zks = Object.assign({}, ZK_SHARED_BITMANIP, ISA_Zksed, ISA_Zksh
 //   add no new instructions, so this is instruction-wise identical to Zkn
 export const ISA_Zk = ISA_Zkn;
 
+// Zicbo (cache-block management) instruction set
+//   Shares its opcode+funct3 with RV128I's lq; see ISA_MISC_MEM
+export const ISA_Zicbo = {
+  'cbo.inval': { isa: 'Zicbo', fmt: 'I-type', funct12: '000000000000', funct3: '010', opcode: OPCODE.MISC_MEM },
+  'cbo.clean': { isa: 'Zicbo', fmt: 'I-type', funct12: '000000000001', funct3: '010', opcode: OPCODE.MISC_MEM },
+  'cbo.flush': { isa: 'Zicbo', fmt: 'I-type', funct12: '000000000010', funct3: '010', opcode: OPCODE.MISC_MEM },
+  'cbo.zero':  { isa: 'Zicbo', fmt: 'I-type', funct12: '000000000100', funct3: '010', opcode: OPCODE.MISC_MEM },
+}
+
 // Zicond (integer conditional operations) instruction set
 export const ISA_Zicond = {
   'czero.eqz': { isa: 'Zicond', fmt: 'R-type', funct7: '0000111', funct3: '101', opcode: OPCODE.OP },
@@ -1172,7 +1181,14 @@ export const ISA_BRANCH = {
 export const ISA_MISC_MEM = {
   [ISA_RV32I['fence'].funct3]:      'fence',
   [ISA_Zifencei['fence.i'].funct3]: 'fence.i',
-  [ISA_RV128I['lq'].funct3]:        'lq',
+  // Shared between RV128I's lq (variable imm) and Zicbo (fixed imm); see
+  // the disambiguation logic in Decoder.js/Encoder.js
+  [ISA_RV128I['lq'].funct3]: {
+    [ISA_Zicbo['cbo.inval'].funct12]: 'cbo.inval',
+    [ISA_Zicbo['cbo.clean'].funct12]: 'cbo.clean',
+    [ISA_Zicbo['cbo.flush'].funct12]: 'cbo.flush',
+    [ISA_Zicbo['cbo.zero'].funct12]:  'cbo.zero',
+  },
 }
 
 export const ISA_SYSTEM = {
@@ -2016,7 +2032,7 @@ export const ISA = Object.assign({},
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
-  ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh,
+  ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin,
   ISA_Priv);
 
@@ -2056,6 +2072,7 @@ export const ISA_Subsets = {
   Zkn: ISA_Zkn,
   Zks: ISA_Zks,
   Zk:  ISA_Zk,
+  Zicbo: ISA_Zicbo,
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,

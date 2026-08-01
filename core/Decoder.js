@@ -734,12 +734,25 @@ export class Decoder {
     if (this.#mne === undefined) {
       throw "Detected MISC-MEM instruction but invalid funct3 field";
     }
+    if (typeof this.#mne !== 'string') {
+      // This funct3 is shared between RV128I's lq (variable imm, rd can be
+      // any register) and the Zicbo cache-block instructions (fixed imm,
+      // rd fixed to 0, rs1-only). rd=0 is required for Zicbo, so any
+      // non-zero rd is unambiguously lq; only consult the imm-keyed Zicbo
+      // table when rd=0, and still default to lq if nothing matches there
+      this.#mne = rd === '00000' ? (this.#mne[imm] ?? 'lq') : 'lq';
+    }
     // Signals when MISC-MEM used as extended encoding space for load operations
     let loadExt = this.#mne === 'lq';
+    // Signals a Zicbo cache-block instruction (fixed imm, rs1-only)
+    let cbo = this.#mne.startsWith('cbo.');
 
     // Check registers
-    if (!loadExt && (rd !== '00000' || rs1 !== '00000')) {
+    if (!loadExt && !cbo && (rd !== '00000' || rs1 !== '00000')) {
       throw "Registers rd and rs1 should be 0";
+    }
+    if (cbo && rd !== '00000') {
+      throw "Register rd should be 0";
     }
 
     // Create common fragments
@@ -764,6 +777,21 @@ export class Decoder {
 
       // Assembly fragments in order of instruction
       this.asmFrags.push(f['opcode'], f['rd'], f['imm'], f['rs1']);
+
+      // Binary fragments from MSB to LSB
+      this.binFrags.push(f['imm'], f['rs1'], f['funct3'], f['rd'], f['opcode']);
+
+    } else if (cbo) {
+      // Zicbo cache-block instructions: fixed imm, rs1 is the only operand
+
+      const base = decReg(rs1);
+
+      f['imm'] = new Frag(FRAG.UNSD, this.#mne, imm, FIELDS.i_imm_11_0.name);
+      f['rs1'] = new Frag(FRAG.RS1, base, rs1, FIELDS.rs1.name, true);
+      f['rd']  = new Frag(FRAG.UNSD, this.#mne, rd, FIELDS.rd.name);
+
+      // Assembly fragments in order of instruction
+      this.asmFrags.push(f['opcode'], f['rs1']);
 
       // Binary fragments from MSB to LSB
       this.binFrags.push(f['imm'], f['rs1'], f['funct3'], f['rd'], f['opcode']);
