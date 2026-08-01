@@ -769,6 +769,15 @@ function dec_zfhmin_opfp_fcvthd() {
     assertEq(inst.asm, 'fcvt.h.d f5, f6');
 }
 
+/*
+ * Zbkx extension
+ */
+function dec_zbkx_op_xperm4() {
+    let inst = new Instruction('287322b3');
+    assertEq(inst.asm, 'xperm4 x5, x6, x7');
+    assertEq(inst.isa, 'Zbkx');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -875,6 +884,7 @@ batchTests('Decoder Tests', [
     ['Dec - Zfhmin   - OP-FP     - fmv.x.h', dec_zfhmin_opfp_fmvxh],
     ['Dec - Zfhmin   - OP-FP     - fcvt.s.h', dec_zfhmin_opfp_fcvtsh],
     ['Dec - Zfhmin   - OP-FP     - fcvt.h.d', dec_zfhmin_opfp_fcvthd],
+    ['Dec - Zbkx     - OP        - xperm4', dec_zbkx_op_xperm4],
 ]);
 
 // Newline

@@ -702,6 +702,15 @@ function enc_zfhmin_opfp_fcvtqh() {
     assertEq(inst.hex, '462372d3');
 }
 
+/*
+ * Zbkx extension
+ */
+function enc_zbkx_op_xperm8() {
+    let inst = new Instruction('xperm8 x5, x6, x7');
+    assertEq(inst.hex, '287342b3');
+    assertEq(inst.isa, 'Zbkx');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -799,6 +808,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zfhmin   - STORE-FP  - fsh', enc_zfhmin_storefp_fsh],
     ['Enc - Zfhmin   - OP-FP     - fmv.h.x', enc_zfhmin_opfp_fmvhx],
     ['Enc - Zfhmin   - OP-FP     - fcvt.q.h', enc_zfhmin_opfp_fcvtqh],
+    ['Enc - Zbkx     - OP        - xperm8', enc_zbkx_op_xperm8],
 ]);
 
 // Newline
