@@ -668,25 +668,30 @@ export class Encoder {
   // V vector arithmetic: mirrors Decoder.js's #decodeVArith field layout.
   #encodeVArith() {
     const inst = this.#inst;
-    const vd = encVReg(this.#opr[0]);
+    const vd = inst.vdType === 'x' ? encReg(this.#opr[0]) : encVReg(this.#opr[0]);
     let next = 1;
 
-    let vs2;
-    if (inst.vs2Fixed !== undefined) {
-      vs2 = inst.vs2Fixed;
-    } else {
-      vs2 = encVReg(this.#opr[next++]);
-    }
+    const readVs2 = () => inst.vs2Fixed !== undefined ? inst.vs2Fixed : encVReg(this.#opr[next++]);
+    const readSrc1 = () => {
+      if (inst.vs1Fixed !== undefined) {
+        return inst.vs1Fixed;
+      } else if (inst.funct3 === V_CAT.IVV || inst.funct3 === V_CAT.MVV) {
+        return encVReg(this.#opr[next++]);
+      } else if (inst.funct3 === V_CAT.IVX || inst.funct3 === V_CAT.MVX) {
+        return encReg(this.#opr[next++]);
+      }
+      return encImm(this.#opr[next++], 5);
+    };
 
-    let src1;
-    if (inst.vs1Fixed !== undefined) {
-      src1 = inst.vs1Fixed;
-    } else if (inst.funct3 === V_CAT.IVV) {
-      src1 = encVReg(this.#opr[next++]);
-    } else if (inst.funct3 === V_CAT.IVX) {
-      src1 = encReg(this.#opr[next++]);
+    // Operand order: (vd, vs2, src1) normally, but the multiply-accumulate
+    // family is typed as (vd, src1, vs2) per the RVV spec
+    let vs2, src1;
+    if (inst.swap) {
+      src1 = readSrc1();
+      vs2 = readVs2();
     } else {
-      src1 = encImm(this.#opr[next++], 5);
+      vs2 = readVs2();
+      src1 = readSrc1();
     }
 
     const vm = inst.vmFixed ?? (this.#opr[next] === 'v0.t' ? '0' : '1');

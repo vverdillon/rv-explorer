@@ -1202,6 +1202,38 @@ function dec_v_arith_vmv1rv() {
     assertEq(inst.asm, 'vmv1r.v v1, v2');
 }
 
+/*
+ * V extension - OPMVV/OPMVX integer-extended arithmetic
+ */
+function dec_v_arith_vmulvv() {
+    let inst = new Instruction('9621a0d7');
+    assertEq(inst.asm, 'vmul.vv v1, v2, v3');
+    assertEq(inst.isa, 'V');
+}
+
+function dec_v_arith_vmaccvv() {
+    // Multiply-accumulate: assembly operand order is (vd, vs1, vs2) - the
+    // multiplicands adjacent - unlike the usual (vd, vs2, vs1)
+    let inst = new Instruction('b63120d7');
+    assertEq(inst.asm, 'vmacc.vv v1, v2, v3');
+}
+
+function dec_v_arith_vredsumvs() {
+    let inst = new Instruction('0221a0d7');
+    assertEq(inst.asm, 'vredsum.vs v1, v2, v3');
+}
+
+function dec_v_arith_vmvxs() {
+    // Scalar-output form: vs1 fixed, vd is a real (x, not v) register
+    let inst = new Instruction('422022d7');
+    assertEq(inst.asm, 'vmv.x.s x5, v2');
+}
+
+function dec_v_arith_vzextvf4() {
+    let inst = new Instruction('4a2220d7');
+    assertEq(inst.asm, 'vzext.vf4 v1, v2');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -1372,6 +1404,11 @@ batchTests('Decoder Tests', [
     ['Dec - V        - V-arith   - vadd.vi', dec_v_arith_vaddvi],
     ['Dec - V        - V-arith   - vmseq.vx', dec_v_arith_vmseqvx],
     ['Dec - V        - V-arith   - vmv1r.v', dec_v_arith_vmv1rv],
+    ['Dec - V        - V-arith   - vmul.vv', dec_v_arith_vmulvv],
+    ['Dec - V        - V-arith   - vmacc.vv', dec_v_arith_vmaccvv],
+    ['Dec - V        - V-arith   - vredsum.vs', dec_v_arith_vredsumvs],
+    ['Dec - V        - V-arith   - vmv.x.s', dec_v_arith_vmvxs],
+    ['Dec - V        - V-arith   - vzext.vf4', dec_v_arith_vzextvf4],
 ]);
 
 // Newline

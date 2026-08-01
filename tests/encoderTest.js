@@ -1071,6 +1071,32 @@ function enc_v_arith_vmv2rv() {
     assertEq(inst.hex, '9e40b157');
 }
 
+/*
+ * V extension - OPMVV/OPMVX integer-extended arithmetic
+ */
+function enc_v_arith_vdivvx() {
+    let inst = new Instruction('vdiv.vx v1, v2, x5');
+    assertEq(inst.hex, '8622e0d7');
+    assertEq(inst.isa, 'V');
+}
+
+function enc_v_arith_vwmulvv() {
+    let inst = new Instruction('vwmul.vv v2, v4, v6');
+    assertEq(inst.hex, 'ee432157');
+}
+
+function enc_v_arith_vcompressvm() {
+    // vm is architecturally fixed to 1 here - vs1 is an independent compress
+    // mask register, not v0
+    let inst = new Instruction('vcompress.vm v1, v2, v3');
+    assertEq(inst.hex, '5e21a0d7');
+}
+
+function enc_v_arith_vmandmm() {
+    let inst = new Instruction('vmand.mm v1, v2, v3');
+    assertEq(inst.hex, '6621a0d7');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1223,6 +1249,10 @@ batchTests('Encoder Tests', [
     ['Enc - V        - V-arith   - vand.vi', enc_v_arith_vandvi],
     ['Enc - V        - V-arith   - vslideup.vi', enc_v_arith_vslideupvi],
     ['Enc - V        - V-arith   - vmv2r.v', enc_v_arith_vmv2rv],
+    ['Enc - V        - V-arith   - vdiv.vx', enc_v_arith_vdivvx],
+    ['Enc - V        - V-arith   - vwmul.vv', enc_v_arith_vwmulvv],
+    ['Enc - V        - V-arith   - vcompress.vm', enc_v_arith_vcompressvm],
+    ['Enc - V        - V-arith   - vmand.mm', enc_v_arith_vmandmm],
 ]);
 
 // Newline

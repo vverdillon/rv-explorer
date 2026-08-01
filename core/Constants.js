@@ -1340,7 +1340,7 @@ export function vParseSegName(name) {
 // field actually resolves them (vs1Fixed takes priority since it's the
 // only thing that disambiguates the vmv*r.v siblings, which all also
 // happen to fix vm=1).
-export const V_CAT = { IVV: '000', IVX: '100', IVI: '011' };
+export const V_CAT = { IVV: '000', IVX: '100', IVI: '011', MVV: '010', MVX: '110' };
 
 function v6(hex) {
   return parseInt(hex, 16).toString(2).padStart(6, '0');
@@ -1353,17 +1353,22 @@ function v6(hex) {
 // category. The assembly suffix is `prefix + variant` - prefix is 'v' for
 // almost everything, but 'w' for the narrowing family (vnsrl.wv/wx/wi
 // etc.), since their vs2 operand is conceptually double-width
-function defVArith(funct6hex, name, variants, { immType = 'i', prefix = 'v' } = {}) {
+function defVArith(funct6hex, name, variants,
+  { immType = 'i', prefix = 'v', cats = { v: 'IVV', x: 'IVX', i: 'IVI' }, swap } = {}) {
   const funct6 = v6(funct6hex);
   for (const variant of variants) {
-    const cat = variant === 'v' ? 'IVV' : (variant === 'x' ? 'IVX' : 'IVI');
     ISA_V[`${name}.${prefix}${variant}`] = {
       isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V,
-      funct6, funct3: V_CAT[cat],
+      funct6, funct3: V_CAT[cats[variant]],
       immType: variant === 'i' ? immType : undefined,
+      swap,
     };
   }
 }
+
+// Category pair used by the OPMVV/OPMVX (integer-extended) instructions,
+// which never have an immediate ("i") variant
+const MV_CATS = { v: 'MVV', x: 'MVX' };
 
 // Plain vd,vs2,vs1/rs1/simm5[,vm] integer arithmetic
 defVArith('00', 'vadd', 'vxi');
@@ -1458,6 +1463,112 @@ const V_WHOLEREG_SEL = { 1: '00000', 2: '00001', 4: '00011', 8: '00111' };
 for (const [count, sel] of Object.entries(V_WHOLEREG_SEL)) {
   ISA_V[`vmv${count}r.v`] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('27'), funct3: V_CAT.IVI, vmFixed: '1', vs1Fixed: sel };
 }
+
+// OPMVV/OPMVX (integer-extended): averaging, widening, divide/rem/multiply,
+// and the multiply-accumulate families. Never have an immediate variant.
+
+// Reductions: vd,vs2,vs1 shape like everything else, just named ".vs"
+// (vs1 holds the single-element seed, not a full per-element operand)
+const V_REDUCE = [
+  ['00', 'vredsum'], ['01', 'vredand'], ['02', 'vredor'], ['03', 'vredxor'],
+  ['04', 'vredminu'], ['05', 'vredmin'], ['06', 'vredmaxu'], ['07', 'vredmax'],
+];
+for (const [fc, name] of V_REDUCE) {
+  ISA_V[`${name}.vs`] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6(fc), funct3: V_CAT.MVV };
+}
+
+// Averaging add/subtract (vv,vx)
+defVArith('08', 'vaaddu', 'vx', { cats: MV_CATS });
+defVArith('09', 'vaadd', 'vx', { cats: MV_CATS });
+defVArith('0a', 'vasubu', 'vx', { cats: MV_CATS });
+defVArith('0b', 'vasub', 'vx', { cats: MV_CATS });
+
+// Slide (MVX only - no MVV form, unlike vslideup/vslidedown in IVX/IVI)
+defVArith('0e', 'vslide1up', 'x', { cats: MV_CATS });
+defVArith('0f', 'vslide1down', 'x', { cats: MV_CATS });
+
+// funct6=0x10: MVV bucket has 3 scalar-output (rd, not vd) instructions
+// dispatched by the vs1 field, all with a real vs2; MVX bucket has the
+// single vmv.s.x (vs2 fixed, rs1 real, vd is a real vector register)
+ISA_V['vmv.x.s']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.MVV, vs1Fixed: '00000', vdType: 'x' };
+ISA_V['vcpop.m']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.MVV, vs1Fixed: '10000', vdType: 'x' };
+ISA_V['vfirst.m'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.MVV, vs1Fixed: '10001', vdType: 'x' };
+ISA_V['vmv.s.x']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.MVX, vs2Fixed: '00000' };
+
+// funct6=0x12: MVV-only integer sign/zero-extension, dispatched by vs1
+const V_EXT_SEL = {
+  'vzext.vf8': '00010', 'vsext.vf8': '00011',
+  'vzext.vf4': '00100', 'vsext.vf4': '00101',
+  'vzext.vf2': '00110', 'vsext.vf2': '00111',
+};
+for (const [name, sel] of Object.entries(V_EXT_SEL)) {
+  ISA_V[name] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.MVV, vs1Fixed: sel };
+}
+
+// funct6=0x14: mask-scan/index instructions, dispatched by vs1; vid.v also
+// fixes vs2 to 0 (it has no real vector source operand at all)
+ISA_V['vmsbf.m'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('14'), funct3: V_CAT.MVV, vs1Fixed: '00001' };
+ISA_V['vmsof.m'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('14'), funct3: V_CAT.MVV, vs1Fixed: '00010' };
+ISA_V['vmsif.m'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('14'), funct3: V_CAT.MVV, vs1Fixed: '00011' };
+ISA_V['viota.m'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('14'), funct3: V_CAT.MVV, vs1Fixed: '10000' };
+ISA_V['vid.v']   = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('14'), funct3: V_CAT.MVV, vs1Fixed: '10001', vs2Fixed: '00000' };
+
+// funct6=0x17: vcompress.vm - vm is architecturally fixed to 1 (vs1 here
+// is the compress mask, an independent vector register, not v0)
+ISA_V['vcompress.vm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.MVV, vmFixed: '1' };
+
+// funct6=0x18-0x1f: mask logical ops (also vm fixed to 1 - operate on
+// arbitrary vector registers used as masks, unrelated to the v0 mask)
+const V_MASK_LOGIC = [
+  ['18', 'vmandn'], ['19', 'vmand'], ['1a', 'vmor'], ['1b', 'vmxor'],
+  ['1c', 'vmorn'], ['1d', 'vmnand'], ['1e', 'vmnor'], ['1f', 'vmxnor'],
+];
+for (const [fc, name] of V_MASK_LOGIC) {
+  ISA_V[`${name}.mm`] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6(fc), funct3: V_CAT.MVV, vmFixed: '1' };
+}
+
+// Divide/remainder/multiply (vv,vx) - standard (vd,vs2,vs1) order
+defVArith('20', 'vdivu', 'vx', { cats: MV_CATS });
+defVArith('21', 'vdiv', 'vx', { cats: MV_CATS });
+defVArith('22', 'vremu', 'vx', { cats: MV_CATS });
+defVArith('23', 'vrem', 'vx', { cats: MV_CATS });
+defVArith('24', 'vmulhu', 'vx', { cats: MV_CATS });
+defVArith('25', 'vmul', 'vx', { cats: MV_CATS });
+defVArith('26', 'vmulhsu', 'vx', { cats: MV_CATS });
+defVArith('27', 'vmulh', 'vx', { cats: MV_CATS });
+
+// Multiply-add/accumulate: the RVV spec lists these with (vd, vs1, vs2)
+// assembly operand order (multiplicands adjacent) rather than the usual
+// (vd, vs2, vs1) - `swap: true` flips the rendering/parsing order without
+// changing the underlying bit layout
+defVArith('29', 'vmadd', 'vx', { cats: MV_CATS, swap: true });
+defVArith('2b', 'vnmsub', 'vx', { cats: MV_CATS, swap: true });
+defVArith('2d', 'vmacc', 'vx', { cats: MV_CATS, swap: true });
+defVArith('2f', 'vnmsac', 'vx', { cats: MV_CATS, swap: true });
+
+// Widening add/subtract/multiply - standard (vd,vs2,vs1) order, standard
+// name (the "w" is part of the base mnemonic, not an operand-suffix prefix)
+defVArith('30', 'vwaddu', 'vx', { cats: MV_CATS });
+defVArith('31', 'vwadd', 'vx', { cats: MV_CATS });
+defVArith('32', 'vwsubu', 'vx', { cats: MV_CATS });
+defVArith('33', 'vwsub', 'vx', { cats: MV_CATS });
+defVArith('38', 'vwmulu', 'vx', { cats: MV_CATS });
+defVArith('3a', 'vwmulsu', 'vx', { cats: MV_CATS });
+defVArith('3b', 'vwmul', 'vx', { cats: MV_CATS });
+
+// Widening add/subtract with a double-width vs2 ("w" prefix, like the
+// narrowing family in reverse)
+defVArith('34', 'vwaddu', 'vx', { cats: MV_CATS, prefix: 'w' });
+defVArith('35', 'vwadd', 'vx', { cats: MV_CATS, prefix: 'w' });
+defVArith('36', 'vwsubu', 'vx', { cats: MV_CATS, prefix: 'w' });
+defVArith('37', 'vwsub', 'vx', { cats: MV_CATS, prefix: 'w' });
+
+// Widening multiply-accumulate: same (vd, vs1, vs2) swap as the
+// non-widening macc family; vwmaccus.vx has no MVV (.vv) counterpart
+defVArith('3c', 'vwmaccu', 'vx', { cats: MV_CATS, swap: true });
+defVArith('3d', 'vwmacc', 'vx', { cats: MV_CATS, swap: true });
+defVArith('3e', 'vwmaccus', 'x', { cats: MV_CATS, swap: true });
+defVArith('3f', 'vwmaccsu', 'vx', { cats: MV_CATS, swap: true });
 
 // Build the funct3 -> funct6 -> mnemonic dispatch table (nested one level
 // further, by vm or vs1Fixed, only where a funct6 code needs it)

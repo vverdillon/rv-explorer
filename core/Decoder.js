@@ -1306,18 +1306,21 @@ export class Decoder {
     this.#mne = entry;
     const inst = ISA[this.#mne];
 
-    const dest = decVReg(vd);
+    // vd: a real vector register, unless this mnemonic writes a scalar
+    // register instead (vmv.x.s/vcpop.m/vfirst.m)
+    const dest = inst.vdType === 'x' ? decReg(vd) : decVReg(vd);
     const f = {
       opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.opcode.name),
       funct6: new Frag(FRAG.OPC, this.#mne, funct6, FIELDS.v_funct6.name),
       vm:     new Frag(FRAG.OPC, this.#mne, vm, FIELDS.v_vm.name),
       funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.funct3.name),
-      vd:     new Frag(FRAG.RD, dest, vd, 'vd'),
+      vd:     new Frag(FRAG.RD, dest, vd, inst.vdType === 'x' ? FIELDS.rd.name : 'vd'),
     };
     this.asmFrags.push(f['opcode'], f['vd']);
 
     // vs2: a real vector register, unless this mnemonic fixes it to 0
-    // (vmv.v.*, a pure move with only one real source operand)
+    // (vmv.v.*/vmv.s.x/vid.v, which have only one or zero real source
+    // operands)
     if (inst.vs2Fixed !== undefined) {
       if (vs2raw !== inst.vs2Fixed) {
         throw `Detected ${this.#mne} with invalid vs2 field`;
@@ -1326,27 +1329,36 @@ export class Decoder {
     } else {
       const vs2 = decVReg(vs2raw);
       f['vs2'] = new Frag(FRAG.RS2, vs2, vs2raw, 'vs2');
-      this.asmFrags.push(f['vs2']);
     }
 
     // vs1/rs1/imm: a real operand, unless this mnemonic fixes it to a
-    // whole-register-move count selector (vmv1r.v/vmv2r.v/vmv4r.v/vmv8r.v)
+    // selector value (vmv1r.v/.../vmv8r.v's register count, or
+    // vzext.vf8/.../vid.v's opcode-within-funct6 selector)
     if (inst.vs1Fixed !== undefined) {
       f['src1'] = new Frag(FRAG.UNSD, this.#mne, src1raw, 'vs1');
-    } else if (funct3 === V_CAT.IVV) {
+    } else if (funct3 === V_CAT.IVV || funct3 === V_CAT.MVV) {
       const src1 = decVReg(src1raw);
       f['src1'] = new Frag(FRAG.RS1, src1, src1raw, 'vs1');
-      this.asmFrags.push(f['src1']);
-    } else if (funct3 === V_CAT.IVX) {
+    } else if (funct3 === V_CAT.IVX || funct3 === V_CAT.MVX) {
       const src1 = decReg(src1raw);
       f['src1'] = new Frag(FRAG.RS1, src1, src1raw, FIELDS.rs1.name);
-      this.asmFrags.push(f['src1']);
     } else {
       // IVI: sign- or zero-extended 5-bit immediate, depending on this
       // mnemonic (shift amounts/gather index are zero-extended)
       const imm = decImm(src1raw, inst.immType !== 'zi');
       f['src1'] = new Frag(FRAG.IMM, imm, src1raw, inst.immType === 'zi' ? 'zimm5' : 'simm5');
-      this.asmFrags.push(f['src1']);
+    }
+
+    // Assembly operand order: (vd, vs2, src1) normally, but the
+    // multiply-accumulate family lists (vd, src1, vs2) per the RVV spec
+    const vs2Real = inst.vs2Fixed === undefined;
+    const src1Real = inst.vs1Fixed === undefined;
+    if (inst.swap) {
+      if (src1Real) this.asmFrags.push(f['src1']);
+      if (vs2Real) this.asmFrags.push(f['vs2']);
+    } else {
+      if (vs2Real) this.asmFrags.push(f['vs2']);
+      if (src1Real) this.asmFrags.push(f['src1']);
     }
 
     // vm suffix: only shown when vm is a real, user-controlled bit (not
