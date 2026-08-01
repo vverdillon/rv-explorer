@@ -448,6 +448,10 @@ export const ISA_Zknd = {
   // fixed 8-bit prefix (imm[11:4]) + 4-bit round-number immediate (imm[3:0]), valid range 0-10
   'aes64ks1i': { isa: 'RV64Zknd', fmt: 'I-type', funct8: '00110001', funct3: '001', opcode: OPCODE.OP_IMM },
   'aes64im':   { isa: 'RV64Zknd', fmt: 'I-type', funct12: '001100000000', funct3: '001', opcode: OPCODE.OP_IMM },
+
+  // RV32-only 4-operand forms (rd, rs1, rs2, bs), superseded by the above on RV64
+  'aes32dsi':  { isa: 'RV32Zknd', fmt: 'R-type', funct7base: '10101', funct3: '000', opcode: OPCODE.OP },
+  'aes32dsmi': { isa: 'RV32Zknd', fmt: 'R-type', funct7base: '10111', funct3: '000', opcode: OPCODE.OP },
 }
 
 // Zkne (NIST suite: AES encryption) instruction set - RV64 only
@@ -455,6 +459,10 @@ export const ISA_Zknd = {
 export const ISA_Zkne = {
   'aes64esm': { isa: 'RV64Zkne', fmt: 'R-type', funct7: '0011011', funct3: '000', opcode: OPCODE.OP },
   'aes64es':  { isa: 'RV64Zkne', fmt: 'R-type', funct7: '0011001', funct3: '000', opcode: OPCODE.OP },
+
+  // RV32-only 4-operand forms (rd, rs1, rs2, bs), superseded by the above on RV64
+  'aes32esi':  { isa: 'RV32Zkne', fmt: 'R-type', funct7base: '10001', funct3: '000', opcode: OPCODE.OP },
+  'aes32esmi': { isa: 'RV32Zkne', fmt: 'R-type', funct7base: '10011', funct3: '000', opcode: OPCODE.OP },
 }
 
 // Zknh (NIST suite: hash function) instruction set
@@ -468,6 +476,14 @@ export const ISA_Zknh = {
   'sha512sum1': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000101', funct3: '001', opcode: OPCODE.OP_IMM },
   'sha512sig0': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000110', funct3: '001', opcode: OPCODE.OP_IMM },
   'sha512sig1': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000111', funct3: '001', opcode: OPCODE.OP_IMM },
+
+  // RV32-only forms operating on 32-bit register-pair halves, superseded by the above on RV64
+  'sha512sum0r': { isa: 'RV32Zknh', fmt: 'R-type', funct7: '0101000', funct3: '000', opcode: OPCODE.OP },
+  'sha512sum1r': { isa: 'RV32Zknh', fmt: 'R-type', funct7: '0101001', funct3: '000', opcode: OPCODE.OP },
+  'sha512sig0l': { isa: 'RV32Zknh', fmt: 'R-type', funct7: '0101010', funct3: '000', opcode: OPCODE.OP },
+  'sha512sig1l': { isa: 'RV32Zknh', fmt: 'R-type', funct7: '0101011', funct3: '000', opcode: OPCODE.OP },
+  'sha512sig0h': { isa: 'RV32Zknh', fmt: 'R-type', funct7: '0101110', funct3: '000', opcode: OPCODE.OP },
+  'sha512sig1h': { isa: 'RV32Zknh', fmt: 'R-type', funct7: '0101111', funct3: '000', opcode: OPCODE.OP },
 }
 
 // Zksed (ShangMi suite: SM4 block cipher) instruction set
@@ -483,6 +499,31 @@ export const ISA_Zksh = {
   'sm3p0': { isa: 'Zksh', fmt: 'I-type', funct12: '000100001000', funct3: '001', opcode: OPCODE.OP_IMM },
   'sm3p1': { isa: 'Zksh', fmt: 'I-type', funct12: '000100001001', funct3: '001', opcode: OPCODE.OP_IMM },
 }
+
+// Picks a subset of keys out of an ISA_* object, used below to build the
+// Zkn/Zks/Zk composite crypto profiles out of instructions already
+// registered under their defining extensions
+function pick(obj, ...keys) {
+  return Object.fromEntries(keys.map(k => [k, obj[k]]));
+}
+
+const ZK_SHARED_BITMANIP = Object.assign(
+  pick(ISA_Zbb, 'rol', 'ror', 'andn', 'orn', 'xnor', 'rori', 'roriw', 'rolw', 'rorw'),
+  pick(ISA_Zbkb, 'pack', 'packh', 'packw'),
+  pick(ISA_Zbc, 'clmul', 'clmulh'),
+  ISA_Zbkx,
+);
+
+// Zkn (NIST algorithm suite) composite profile: Zbkb+Zbkc+Zbkx+Zkne+Zknd+Zknh
+export const ISA_Zkn = Object.assign({}, ZK_SHARED_BITMANIP, ISA_Zknd, ISA_Zkne, ISA_Zknh);
+
+// Zks (ShangMi algorithm suite) composite profile: Zbkb+Zbkc+Zbkx+Zksed+Zksh
+export const ISA_Zks = Object.assign({}, ZK_SHARED_BITMANIP, ISA_Zksed, ISA_Zksh);
+
+// Zk (generic scalar cryptography) composite profile: Zkn+Zkr+Zkt
+//   Zkr (entropy source CSR) and Zkt (data-independent execution latency)
+//   add no new instructions, so this is instruction-wise identical to Zkn
+export const ISA_Zk = ISA_Zkn;
 
 // Zicond (integer conditional operations) instruction set
 export const ISA_Zicond = {
@@ -921,13 +962,25 @@ export const ISA_OP = {
   // Zkne
   [ISA_Zkne['aes64esm'].funct7 + ISA_Zkne['aes64esm'].funct3]: 'aes64esm',
   [ISA_Zkne['aes64es'].funct7  + ISA_Zkne['aes64es'].funct3]:  'aes64es',
+  // Zknh (RV32-only register-pair forms)
+  [ISA_Zknh['sha512sum0r'].funct7 + ISA_Zknh['sha512sum0r'].funct3]: 'sha512sum0r',
+  [ISA_Zknh['sha512sum1r'].funct7 + ISA_Zknh['sha512sum1r'].funct3]: 'sha512sum1r',
+  [ISA_Zknh['sha512sig0l'].funct7 + ISA_Zknh['sha512sig0l'].funct3]: 'sha512sig0l',
+  [ISA_Zknh['sha512sig1l'].funct7 + ISA_Zknh['sha512sig1l'].funct3]: 'sha512sig1l',
+  [ISA_Zknh['sha512sig0h'].funct7 + ISA_Zknh['sha512sig0h'].funct3]: 'sha512sig0h',
+  [ISA_Zknh['sha512sig1h'].funct7 + ISA_Zknh['sha512sig1h'].funct3]: 'sha512sig1h',
 }
 
 // R-type instructions on the OP opcode whose funct7 carves out a 2-bit
-// "byte select" immediate at bits[31:30] (Zksed), keyed by funct7base+funct3
+// "byte select" immediate at bits[31:30] (Zksed, RV32 Zknd/Zkne), keyed by
+// funct7base+funct3
 export const ISA_OP_BS = {
   [ISA_Zksed['sm4ed'].funct7base + ISA_Zksed['sm4ed'].funct3]: 'sm4ed',
   [ISA_Zksed['sm4ks'].funct7base + ISA_Zksed['sm4ks'].funct3]: 'sm4ks',
+  [ISA_Zknd['aes32dsi'].funct7base  + ISA_Zknd['aes32dsi'].funct3]:  'aes32dsi',
+  [ISA_Zknd['aes32dsmi'].funct7base + ISA_Zknd['aes32dsmi'].funct3]: 'aes32dsmi',
+  [ISA_Zkne['aes32esi'].funct7base  + ISA_Zkne['aes32esi'].funct3]:  'aes32esi',
+  [ISA_Zkne['aes32esmi'].funct7base + ISA_Zkne['aes32esmi'].funct3]: 'aes32esmi',
 }
 
 export const ISA_OP_32 = {
@@ -2000,6 +2053,9 @@ export const ISA_Subsets = {
   Zknh: ISA_Zknh,
   Zksed: ISA_Zksed,
   Zksh: ISA_Zksh,
+  Zkn: ISA_Zkn,
+  Zks: ISA_Zks,
+  Zk:  ISA_Zk,
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,
