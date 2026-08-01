@@ -1340,7 +1340,7 @@ export function vParseSegName(name) {
 // field actually resolves them (vs1Fixed takes priority since it's the
 // only thing that disambiguates the vmv*r.v siblings, which all also
 // happen to fix vm=1).
-export const V_CAT = { IVV: '000', IVX: '100', IVI: '011', MVV: '010', MVX: '110' };
+export const V_CAT = { IVV: '000', IVX: '100', IVI: '011', MVV: '010', MVX: '110', FVV: '001', FVF: '101' };
 
 function v6(hex) {
   return parseInt(hex, 16).toString(2).padStart(6, '0');
@@ -1569,6 +1569,93 @@ defVArith('3c', 'vwmaccu', 'vx', { cats: MV_CATS, swap: true });
 defVArith('3d', 'vwmacc', 'vx', { cats: MV_CATS, swap: true });
 defVArith('3e', 'vwmaccus', 'x', { cats: MV_CATS, swap: true });
 defVArith('3f', 'vwmaccsu', 'vx', { cats: MV_CATS, swap: true });
+
+// OPFVV/OPFVF (vector floating-point): same shape as the integer
+// categories, but the scalar operand (when real) is always a float
+// register, and there's no immediate variant at all
+const FV_CATS = { v: 'FVV', f: 'FVF' };
+
+defVArith('00', 'vfadd', 'vf', { cats: FV_CATS });
+defVArith('02', 'vfsub', 'vf', { cats: FV_CATS });
+defVArith('04', 'vfmin', 'vf', { cats: FV_CATS });
+defVArith('06', 'vfmax', 'vf', { cats: FV_CATS });
+defVArith('08', 'vfsgnj', 'vf', { cats: FV_CATS });
+defVArith('09', 'vfsgnjn', 'vf', { cats: FV_CATS });
+defVArith('0a', 'vfsgnjx', 'vf', { cats: FV_CATS });
+defVArith('0e', 'vfslide1up', 'f', { cats: FV_CATS });
+defVArith('0f', 'vfslide1down', 'f', { cats: FV_CATS });
+
+defVArith('18', 'vmfeq', 'vf', { cats: FV_CATS });
+defVArith('19', 'vmfle', 'vf', { cats: FV_CATS });
+defVArith('1b', 'vmflt', 'vf', { cats: FV_CATS });
+defVArith('1c', 'vmfne', 'vf', { cats: FV_CATS });
+defVArith('1d', 'vmfgt', 'f', { cats: FV_CATS });
+defVArith('1f', 'vmfge', 'f', { cats: FV_CATS });
+
+defVArith('20', 'vfdiv', 'vf', { cats: FV_CATS });
+defVArith('21', 'vfrdiv', 'f', { cats: FV_CATS });
+defVArith('24', 'vfmul', 'vf', { cats: FV_CATS });
+defVArith('27', 'vfrsub', 'f', { cats: FV_CATS });
+
+// Fused multiply-add family: (vd, vs1/rs1, vs2) order, like integer macc
+defVArith('28', 'vfmadd', 'vf', { cats: FV_CATS, swap: true });
+defVArith('29', 'vfnmadd', 'vf', { cats: FV_CATS, swap: true });
+defVArith('2a', 'vfmsub', 'vf', { cats: FV_CATS, swap: true });
+defVArith('2b', 'vfnmsub', 'vf', { cats: FV_CATS, swap: true });
+defVArith('2c', 'vfmacc', 'vf', { cats: FV_CATS, swap: true });
+defVArith('2d', 'vfnmacc', 'vf', { cats: FV_CATS, swap: true });
+defVArith('2e', 'vfmsac', 'vf', { cats: FV_CATS, swap: true });
+defVArith('2f', 'vfnmsac', 'vf', { cats: FV_CATS, swap: true });
+
+defVArith('30', 'vfwadd', 'vf', { cats: FV_CATS });
+defVArith('32', 'vfwsub', 'vf', { cats: FV_CATS });
+defVArith('34', 'vfwadd', 'vf', { cats: FV_CATS, prefix: 'w' });
+defVArith('36', 'vfwsub', 'vf', { cats: FV_CATS, prefix: 'w' });
+defVArith('38', 'vfwmul', 'vf', { cats: FV_CATS });
+defVArith('3c', 'vfwmacc', 'vf', { cats: FV_CATS, swap: true });
+defVArith('3d', 'vfwnmacc', 'vf', { cats: FV_CATS, swap: true });
+defVArith('3e', 'vfwmsac', 'vf', { cats: FV_CATS, swap: true });
+defVArith('3f', 'vfwnmsac', 'vf', { cats: FV_CATS, swap: true });
+
+// Reductions (FVV only, ".vs" suffix)
+const V_FREDUCE = [['01', 'vfredusum'], ['03', 'vfredosum'], ['05', 'vfredmin'], ['07', 'vfredmax']];
+for (const [fc, name] of V_FREDUCE) {
+  ISA_V[`${name}.vs`] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6(fc), funct3: V_CAT.FVV };
+}
+ISA_V['vfwredusum.vs'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('31'), funct3: V_CAT.FVV };
+ISA_V['vfwredosum.vs'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('33'), funct3: V_CAT.FVV };
+
+// funct6=0x10: vfmv.f.s (FVV - extract vs2[0] into a scalar float
+// register: vdType 'f') / vfmv.s.f (FVF - insert a scalar float register
+// into vd[0]: vs2 fixed, like vmv.s.x)
+ISA_V['vfmv.f.s'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.FVV, vs1Fixed: '00000', vdType: 'f' };
+ISA_V['vfmv.s.f'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.FVF, vs2Fixed: '00000' };
+
+// funct6=0x17: vfmerge.vfm (vm=0, real vs2) / vfmv.v.f (vm=1, vs2 fixed) -
+// FVF only, no FVV counterpart
+ISA_V['vfmerge.vfm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.FVF, vmFixed: '0' };
+ISA_V['vfmv.v.f']    = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.FVF, vmFixed: '1', vs2Fixed: '00000' };
+
+// funct6=0x12 (FVV only): the entire int<->float conversion family,
+// dispatched purely by vs1 - vd/vs2 are still real full-width vectors
+// (the "narrowing"/"widening" is about element width, not encoding shape)
+const V_FCVT = {
+  'vfcvt.xu.f.v': '00000', 'vfcvt.x.f.v': '00001', 'vfcvt.f.xu.v': '00010', 'vfcvt.f.x.v': '00011',
+  'vfcvt.rtz.xu.f.v': '00110', 'vfcvt.rtz.x.f.v': '00111',
+  'vfwcvt.xu.f.v': '01000', 'vfwcvt.x.f.v': '01001', 'vfwcvt.f.xu.v': '01010', 'vfwcvt.f.x.v': '01011',
+  'vfwcvt.f.f.v': '01100', 'vfwcvt.rtz.xu.f.v': '01110', 'vfwcvt.rtz.x.f.v': '01111',
+  'vfncvt.xu.f.w': '10000', 'vfncvt.x.f.w': '10001', 'vfncvt.f.xu.w': '10010', 'vfncvt.f.x.w': '10011',
+  'vfncvt.f.f.w': '10100', 'vfncvt.rod.f.f.w': '10101', 'vfncvt.rtz.xu.f.w': '10110', 'vfncvt.rtz.x.f.w': '10111',
+};
+for (const [name, sel] of Object.entries(V_FCVT)) {
+  ISA_V[name] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.FVV, vs1Fixed: sel };
+}
+
+// funct6=0x13 (FVV only): unary float ops, also dispatched by vs1
+const V_FSQRT = { 'vfsqrt.v': '00000', 'vfrsqrt7.v': '00100', 'vfrec7.v': '00101', 'vfclass.v': '10000' };
+for (const [name, sel] of Object.entries(V_FSQRT)) {
+  ISA_V[name] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('13'), funct3: V_CAT.FVV, vs1Fixed: sel };
+}
 
 // Build the funct3 -> funct6 -> mnemonic dispatch table (nested one level
 // further, by vm or vs1Fixed, only where a funct6 code needs it)

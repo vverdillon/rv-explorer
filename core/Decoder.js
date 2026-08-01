@@ -1307,14 +1307,18 @@ export class Decoder {
     const inst = ISA[this.#mne];
 
     // vd: a real vector register, unless this mnemonic writes a scalar
-    // register instead (vmv.x.s/vcpop.m/vfirst.m)
-    const dest = inst.vdType === 'x' ? decReg(vd) : decVReg(vd);
+    // register instead - integer (vmv.x.s/vcpop.m/vfirst.m) or float
+    // (vfmv.f.s)
+    const dest = inst.vdType === 'x' ? decReg(vd)
+      : inst.vdType === 'f' ? decReg(vd, true)
+      : decVReg(vd);
+    const vdField = inst.vdType === 'x' ? FIELDS.rd.name : inst.vdType === 'f' ? 'fd' : 'vd';
     const f = {
       opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.opcode.name),
       funct6: new Frag(FRAG.OPC, this.#mne, funct6, FIELDS.v_funct6.name),
       vm:     new Frag(FRAG.OPC, this.#mne, vm, FIELDS.v_vm.name),
       funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.funct3.name),
-      vd:     new Frag(FRAG.RD, dest, vd, inst.vdType === 'x' ? FIELDS.rd.name : 'vd'),
+      vd:     new Frag(FRAG.RD, dest, vd, vdField),
     };
     this.asmFrags.push(f['opcode'], f['vd']);
 
@@ -1336,12 +1340,15 @@ export class Decoder {
     // vzext.vf8/.../vid.v's opcode-within-funct6 selector)
     if (inst.vs1Fixed !== undefined) {
       f['src1'] = new Frag(FRAG.UNSD, this.#mne, src1raw, 'vs1');
-    } else if (funct3 === V_CAT.IVV || funct3 === V_CAT.MVV) {
+    } else if (funct3 === V_CAT.IVV || funct3 === V_CAT.MVV || funct3 === V_CAT.FVV) {
       const src1 = decVReg(src1raw);
       f['src1'] = new Frag(FRAG.RS1, src1, src1raw, 'vs1');
     } else if (funct3 === V_CAT.IVX || funct3 === V_CAT.MVX) {
       const src1 = decReg(src1raw);
       f['src1'] = new Frag(FRAG.RS1, src1, src1raw, FIELDS.rs1.name);
+    } else if (funct3 === V_CAT.FVF) {
+      const src1 = decReg(src1raw, true);
+      f['src1'] = new Frag(FRAG.RS1, src1, src1raw, 'fs1');
     } else {
       // IVI: sign- or zero-extended 5-bit immediate, depending on this
       // mnemonic (shift amounts/gather index are zero-extended)

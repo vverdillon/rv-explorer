@@ -1097,6 +1097,31 @@ function enc_v_arith_vmandmm() {
     assertEq(inst.hex, '6621a0d7');
 }
 
+/*
+ * V extension - OPFVV/OPFVF floating-point arithmetic
+ */
+function enc_v_arith_vfsubvf() {
+    let inst = new Instruction('vfsub.vf v1, v2, f5');
+    assertEq(inst.hex, '0a22d0d7');
+    assertEq(inst.isa, 'V');
+}
+
+function enc_v_arith_vfmvsf() {
+    // Inserts a scalar float register into vd[0] - vs2 fixed, like vmv.s.x
+    let inst = new Instruction('vfmv.s.f v1, f5');
+    assertEq(inst.hex, '4202d0d7');
+}
+
+function enc_v_arith_vfmvvf() {
+    let inst = new Instruction('vfmv.v.f v1, f5');
+    assertEq(inst.hex, '5e02d0d7');
+}
+
+function enc_v_arith_vfredusumvs() {
+    let inst = new Instruction('vfredusum.vs v1, v2, v3');
+    assertEq(inst.hex, '062190d7');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1253,6 +1278,10 @@ batchTests('Encoder Tests', [
     ['Enc - V        - V-arith   - vwmul.vv', enc_v_arith_vwmulvv],
     ['Enc - V        - V-arith   - vcompress.vm', enc_v_arith_vcompressvm],
     ['Enc - V        - V-arith   - vmand.mm', enc_v_arith_vmandmm],
+    ['Enc - V        - V-arith   - vfsub.vf', enc_v_arith_vfsubvf],
+    ['Enc - V        - V-arith   - vfmv.s.f', enc_v_arith_vfmvsf],
+    ['Enc - V        - V-arith   - vfmv.v.f', enc_v_arith_vfmvvf],
+    ['Enc - V        - V-arith   - vfredusum.vs', enc_v_arith_vfredusumvs],
 ]);
 
 // Newline

@@ -668,17 +668,21 @@ export class Encoder {
   // V vector arithmetic: mirrors Decoder.js's #decodeVArith field layout.
   #encodeVArith() {
     const inst = this.#inst;
-    const vd = inst.vdType === 'x' ? encReg(this.#opr[0]) : encVReg(this.#opr[0]);
+    const vd = inst.vdType === 'x' ? encReg(this.#opr[0])
+      : inst.vdType === 'f' ? encReg(this.#opr[0], true)
+      : encVReg(this.#opr[0]);
     let next = 1;
 
     const readVs2 = () => inst.vs2Fixed !== undefined ? inst.vs2Fixed : encVReg(this.#opr[next++]);
     const readSrc1 = () => {
       if (inst.vs1Fixed !== undefined) {
         return inst.vs1Fixed;
-      } else if (inst.funct3 === V_CAT.IVV || inst.funct3 === V_CAT.MVV) {
+      } else if (inst.funct3 === V_CAT.IVV || inst.funct3 === V_CAT.MVV || inst.funct3 === V_CAT.FVV) {
         return encVReg(this.#opr[next++]);
       } else if (inst.funct3 === V_CAT.IVX || inst.funct3 === V_CAT.MVX) {
         return encReg(this.#opr[next++]);
+      } else if (inst.funct3 === V_CAT.FVF) {
+        return encReg(this.#opr[next++], true);
       }
       return encImm(this.#opr[next++], 5);
     };

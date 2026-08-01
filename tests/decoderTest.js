@@ -1234,6 +1234,37 @@ function dec_v_arith_vzextvf4() {
     assertEq(inst.asm, 'vzext.vf4 v1, v2');
 }
 
+/*
+ * V extension - OPFVV/OPFVF floating-point arithmetic
+ */
+function dec_v_arith_vfaddvv() {
+    let inst = new Instruction('022190d7');
+    assertEq(inst.asm, 'vfadd.vv v1, v2, v3');
+    assertEq(inst.isa, 'V');
+}
+
+function dec_v_arith_vfmaccvv() {
+    // Same (vd, vs1, vs2) swap as the integer macc family
+    let inst = new Instruction('b23110d7');
+    assertEq(inst.asm, 'vfmacc.vv v1, v2, v3');
+}
+
+function dec_v_arith_vfsqrtv() {
+    let inst = new Instruction('4e2010d7');
+    assertEq(inst.asm, 'vfsqrt.v v1, v2');
+}
+
+function dec_v_arith_vfmvfs() {
+    // Extracts vs2[0] into a scalar float register
+    let inst = new Instruction('422012d7');
+    assertEq(inst.asm, 'vfmv.f.s f5, v2');
+}
+
+function dec_v_arith_vfcvtxfv() {
+    let inst = new Instruction('4a2090d7');
+    assertEq(inst.asm, 'vfcvt.x.f.v v1, v2');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -1409,6 +1440,11 @@ batchTests('Decoder Tests', [
     ['Dec - V        - V-arith   - vredsum.vs', dec_v_arith_vredsumvs],
     ['Dec - V        - V-arith   - vmv.x.s', dec_v_arith_vmvxs],
     ['Dec - V        - V-arith   - vzext.vf4', dec_v_arith_vzextvf4],
+    ['Dec - V        - V-arith   - vfadd.vv', dec_v_arith_vfaddvv],
+    ['Dec - V        - V-arith   - vfmacc.vv', dec_v_arith_vfmaccvv],
+    ['Dec - V        - V-arith   - vfsqrt.v', dec_v_arith_vfsqrtv],
+    ['Dec - V        - V-arith   - vfmv.f.s', dec_v_arith_vfmvfs],
+    ['Dec - V        - V-arith   - vfcvt.x.f.v', dec_v_arith_vfcvtxfv],
 ]);
 
 // Newline
