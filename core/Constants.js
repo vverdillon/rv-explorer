@@ -1329,6 +1329,153 @@ export function vParseSegName(name) {
   return { base: m[1] + m[3], nf: parseInt(m[2], 10) - 1 };
 }
 
+// V vector arithmetic instructions (OPIVV/OPIVX/OPIVI/OPMVV/OPMVX/OPFVV/
+// OPFVF): dispatch is keyed first by funct3 (the "category"), then funct6
+// (bits[31:26]). A handful of funct6 codes are further disambiguated
+// either by the vm bit (the vm-suffixed "with-carry"/"write-mask" pairs
+// like vadc.vvm/vmadc.vvm/vmadc.vv, and vmerge.vvm/vmv.v.v) or by the
+// vs1/simm5 position holding a fixed register-count selector instead of a
+// real operand (vmv1r.v/vmv2r.v/vmv4r.v/vmv8r.v) - both cases are
+// collapsed into ISA_OP_V_ARITH generically below, keyed by whichever
+// field actually resolves them (vs1Fixed takes priority since it's the
+// only thing that disambiguates the vmv*r.v siblings, which all also
+// happen to fix vm=1).
+export const V_CAT = { IVV: '000', IVX: '100', IVI: '011' };
+
+function v6(hex) {
+  return parseInt(hex, 16).toString(2).padStart(6, '0');
+}
+
+// Registers a "shape A" family (vd, vs2, vs1/rs1/imm[, vm]) sharing a name
+// across some subset of its vv/vx/vi (or, for narrowing ops, wv/wx/wi)
+// variants
+// `variants` chars are 'v'/'x'/'i', mapping directly to the IVV/IVX/IVI
+// category. The assembly suffix is `prefix + variant` - prefix is 'v' for
+// almost everything, but 'w' for the narrowing family (vnsrl.wv/wx/wi
+// etc.), since their vs2 operand is conceptually double-width
+function defVArith(funct6hex, name, variants, { immType = 'i', prefix = 'v' } = {}) {
+  const funct6 = v6(funct6hex);
+  for (const variant of variants) {
+    const cat = variant === 'v' ? 'IVV' : (variant === 'x' ? 'IVX' : 'IVI');
+    ISA_V[`${name}.${prefix}${variant}`] = {
+      isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V,
+      funct6, funct3: V_CAT[cat],
+      immType: variant === 'i' ? immType : undefined,
+    };
+  }
+}
+
+// Plain vd,vs2,vs1/rs1/simm5[,vm] integer arithmetic
+defVArith('00', 'vadd', 'vxi');
+defVArith('02', 'vsub', 'vx');
+defVArith('03', 'vrsub', 'xi');
+defVArith('04', 'vminu', 'vx');
+defVArith('05', 'vmin', 'vx');
+defVArith('06', 'vmaxu', 'vx');
+defVArith('07', 'vmax', 'vx');
+defVArith('09', 'vand', 'vxi');
+defVArith('0a', 'vor', 'vxi');
+defVArith('0b', 'vxor', 'vxi');
+defVArith('18', 'vmseq', 'vxi');
+defVArith('19', 'vmsne', 'vxi');
+defVArith('1a', 'vmsltu', 'vx');
+defVArith('1b', 'vmslt', 'vx');
+defVArith('1c', 'vmsleu', 'vxi');
+defVArith('1d', 'vmsle', 'vxi');
+defVArith('1e', 'vmsgtu', 'xi');
+defVArith('1f', 'vmsgt', 'xi');
+defVArith('20', 'vsaddu', 'vxi');
+defVArith('21', 'vsadd', 'vxi');
+defVArith('22', 'vssubu', 'vx');
+defVArith('23', 'vssub', 'vx');
+defVArith('27', 'vsmul', 'vx');
+
+// Zero-extended 5-bit immediate group (shift amounts / gather index)
+defVArith('0c', 'vrgather', 'vxi', { immType: 'zi' });
+defVArith('25', 'vsll', 'vxi', { immType: 'zi' });
+defVArith('28', 'vsrl', 'vxi', { immType: 'zi' });
+defVArith('29', 'vsra', 'vxi', { immType: 'zi' });
+defVArith('2a', 'vssrl', 'vxi', { immType: 'zi' });
+defVArith('2b', 'vssra', 'vxi', { immType: 'zi' });
+
+// Narrowing ops: "w" prefix instead of "v" (vs2 is conceptually
+// double-width), still zero-extended immediate
+defVArith('2c', 'vnsrl', 'vxi', { immType: 'zi', prefix: 'w' });
+defVArith('2d', 'vnsra', 'vxi', { immType: 'zi', prefix: 'w' });
+defVArith('2e', 'vnclipu', 'vxi', { immType: 'zi', prefix: 'w' });
+defVArith('2f', 'vnclip', 'vxi', { immType: 'zi', prefix: 'w' });
+
+// Widening reductions (IVV only, ".vs" suffix rather than ".vv")
+ISA_V['vwredsumu.vs'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('30'), funct3: V_CAT.IVV };
+ISA_V['vwredsum.vs']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('31'), funct3: V_CAT.IVV };
+
+// funct6=0x0e/0x0f: each category names something different (or omits
+// the category entirely) at these codes
+ISA_V['vrgatherei16.vv'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('0e'), funct3: V_CAT.IVV };
+ISA_V['vslideup.vx']     = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('0e'), funct3: V_CAT.IVX };
+ISA_V['vslideup.vi']     = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('0e'), funct3: V_CAT.IVI, immType: 'zi' };
+ISA_V['vslidedown.vx']   = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('0f'), funct3: V_CAT.IVX };
+ISA_V['vslidedown.vi']   = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('0f'), funct3: V_CAT.IVI, immType: 'zi' };
+
+// funct6=0x10: vadc - only vm=0 (with-carry-in) is valid; there's no
+// compare/write-mask counterpart (that's 0x11, vmadc)
+ISA_V['vadc.vvm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.IVV, vmFixed: '0' };
+ISA_V['vadc.vxm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.IVX, vmFixed: '0' };
+ISA_V['vadc.vim'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('10'), funct3: V_CAT.IVI, vmFixed: '0', immType: 'i' };
+
+// funct6=0x11: vmadc - vm=0 reads a carry-in (vvm/vxm/vim), vm=1 doesn't
+// (plain vv/vx/vi compare-and-write-mask)
+ISA_V['vmadc.vvm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('11'), funct3: V_CAT.IVV, vmFixed: '0' };
+ISA_V['vmadc.vv']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('11'), funct3: V_CAT.IVV, vmFixed: '1' };
+ISA_V['vmadc.vxm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('11'), funct3: V_CAT.IVX, vmFixed: '0' };
+ISA_V['vmadc.vx']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('11'), funct3: V_CAT.IVX, vmFixed: '1' };
+ISA_V['vmadc.vim'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('11'), funct3: V_CAT.IVI, vmFixed: '0', immType: 'i' };
+ISA_V['vmadc.vi']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('11'), funct3: V_CAT.IVI, vmFixed: '1', immType: 'i' };
+
+// funct6=0x12: vsbc - only vm=0 valid, no immediate form
+ISA_V['vsbc.vvm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.IVV, vmFixed: '0' };
+ISA_V['vsbc.vxm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.IVX, vmFixed: '0' };
+
+// funct6=0x13: vmsbc - vm=0/vm=1 pair like vmadc, no immediate form
+ISA_V['vmsbc.vvm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('13'), funct3: V_CAT.IVV, vmFixed: '0' };
+ISA_V['vmsbc.vv']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('13'), funct3: V_CAT.IVV, vmFixed: '1' };
+ISA_V['vmsbc.vxm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('13'), funct3: V_CAT.IVX, vmFixed: '0' };
+ISA_V['vmsbc.vx']  = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('13'), funct3: V_CAT.IVX, vmFixed: '1' };
+
+// funct6=0x17: vmerge (vm=0, real vs2) vs vmv.v.* (vm=1, vs2 fixed to 0,
+// single real operand - a pure "move", not a per-element merge)
+ISA_V['vmerge.vvm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.IVV, vmFixed: '0' };
+ISA_V['vmv.v.v']    = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.IVV, vmFixed: '1', vs2Fixed: '00000' };
+ISA_V['vmerge.vxm'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.IVX, vmFixed: '0' };
+ISA_V['vmv.v.x']    = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.IVX, vmFixed: '1', vs2Fixed: '00000' };
+ISA_V['vmerge.vim'] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.IVI, vmFixed: '0', immType: 'i' };
+ISA_V['vmv.v.i']    = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('17'), funct3: V_CAT.IVI, vmFixed: '1', vs2Fixed: '00000', immType: 'i' };
+
+// funct6=0x27 in IVI only: whole-register move, dispatched by the fixed
+// count selector occupying the vs1/simm5 position (19:15) rather than a
+// real immediate; vm is architecturally always 1 (unmasked)
+const V_WHOLEREG_SEL = { 1: '00000', 2: '00001', 4: '00011', 8: '00111' };
+for (const [count, sel] of Object.entries(V_WHOLEREG_SEL)) {
+  ISA_V[`vmv${count}r.v`] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('27'), funct3: V_CAT.IVI, vmFixed: '1', vs1Fixed: sel };
+}
+
+// Build the funct3 -> funct6 -> mnemonic dispatch table (nested one level
+// further, by vm or vs1Fixed, only where a funct6 code needs it)
+export const ISA_OP_V_ARITH = {};
+for (const [name, e] of Object.entries(ISA_V)) {
+  if (e.fmt !== 'V-arith') {
+    continue;
+  }
+  const bucket = ISA_OP_V_ARITH[e.funct3] ??= {};
+  if (e.vs1Fixed !== undefined) {
+    (bucket[e.funct6] ??= {})[e.vs1Fixed] = name;
+  } else if (e.vmFixed !== undefined) {
+    (bucket[e.funct6] ??= {})[e.vmFixed] = name;
+  } else {
+    bucket[e.funct6] = name;
+  }
+}
+
 
 // ISA per opcode
 export const ISA_OP = {

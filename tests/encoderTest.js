@@ -1046,6 +1046,31 @@ function enc_v_mem_vlseg2e32v() {
     assertEq(inst.hex, '22056087');
 }
 
+/*
+ * V extension - OPIVV/OPIVX/OPIVI integer arithmetic
+ */
+function enc_v_arith_vsubvx() {
+    let inst = new Instruction('vsub.vx v1, v2, x5');
+    assertEq(inst.hex, '0a22c0d7');
+    assertEq(inst.isa, 'V');
+}
+
+function enc_v_arith_vandvi() {
+    let inst = new Instruction('vand.vi v1, v2, 10');
+    assertEq(inst.hex, '262530d7');
+}
+
+function enc_v_arith_vslideupvi() {
+    // Zero-extended 5-bit immediate group (shift amounts/gather index/slide)
+    let inst = new Instruction('vslideup.vi v1, v2, 5');
+    assertEq(inst.hex, '3a22b0d7');
+}
+
+function enc_v_arith_vmv2rv() {
+    let inst = new Instruction('vmv2r.v v2, v4');
+    assertEq(inst.hex, '9e40b157');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1194,6 +1219,10 @@ batchTests('Encoder Tests', [
     ['Enc - V        - V-mem     - vsm.v', enc_v_mem_vsmv],
     ['Enc - V        - V-mem     - vs4r.v', enc_v_mem_vs4rv],
     ['Enc - V        - V-mem     - vlseg2e32.v', enc_v_mem_vlseg2e32v],
+    ['Enc - V        - V-arith   - vsub.vx', enc_v_arith_vsubvx],
+    ['Enc - V        - V-arith   - vand.vi', enc_v_arith_vandvi],
+    ['Enc - V        - V-arith   - vslideup.vi', enc_v_arith_vslideupvi],
+    ['Enc - V        - V-arith   - vmv2r.v', enc_v_arith_vmv2rv],
 ]);
 
 // Newline

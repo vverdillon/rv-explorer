@@ -14,6 +14,7 @@ import { BASE, XLEN_MASK, FLI_STRINGS,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
   ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP, ISA_C2_ZCMP,
   V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vSegName, vParseSegName,
+  V_CAT, ISA_OP_V_ARITH,
   ISA, FRAG
 } from './Constants.js'
 
@@ -1193,6 +1194,10 @@ export class Decoder {
       this.#decodeVCFG();
       return;
     }
+    if (ISA_OP_V_ARITH[funct3] !== undefined) {
+      this.#decodeVArith(funct3);
+      return;
+    }
 
     throw 'Detected OP-V instruction with unsupported funct3 (vector ' +
       'arithmetic instructions not yet supported)';
@@ -1270,6 +1275,88 @@ export class Decoder {
       this.binFrags.push(f['funct7'], f['rs2'], f['rs1'], f['funct3'],
         f['rd'], f['opcode']);
     }
+  }
+
+  // V vector arithmetic (OPIVV/OPIVX/OPIVI/OPMVV/OPMVX/OPFVV/OPFVF): all 7
+  // categories share this field layout (funct6, vm, vs2, vs1/rs1/imm, vd),
+  // differing only in how vs1's position is interpreted (real vector
+  // register, real scalar register, or an immediate) and a handful of
+  // funct6 codes needing vm or the vs1 field itself for disambiguation -
+  // see ISA_OP_V_ARITH in Constants.js.
+  #decodeVArith(funct3) {
+    const funct6 = getBits(this.#bin, FIELDS.v_funct6.pos),
+      vm = getBits(this.#bin, FIELDS.v_vm.pos),
+      vs2raw = getBits(this.#bin, FIELDS.rs2.pos),
+      src1raw = getBits(this.#bin, FIELDS.rs1.pos),
+      vd = getBits(this.#bin, FIELDS.rd.pos);
+
+    let entry = ISA_OP_V_ARITH[funct3][funct6];
+    if (entry === undefined) {
+      throw 'Detected OP-V arithmetic instruction but invalid funct6 field';
+    }
+    if (typeof entry !== 'string') {
+      // Disambiguated by whichever field resolves it: 1-bit keys index by
+      // vm, 5-bit keys by the raw vs1/simm5 field (vmv*r.v's count selector)
+      const key = Object.keys(entry)[0].length === 1 ? vm : src1raw;
+      entry = entry[key];
+      if (entry === undefined) {
+        throw 'Detected OP-V arithmetic instruction but invalid vm/vs1 field';
+      }
+    }
+    this.#mne = entry;
+    const inst = ISA[this.#mne];
+
+    const dest = decVReg(vd);
+    const f = {
+      opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.opcode.name),
+      funct6: new Frag(FRAG.OPC, this.#mne, funct6, FIELDS.v_funct6.name),
+      vm:     new Frag(FRAG.OPC, this.#mne, vm, FIELDS.v_vm.name),
+      funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.funct3.name),
+      vd:     new Frag(FRAG.RD, dest, vd, 'vd'),
+    };
+    this.asmFrags.push(f['opcode'], f['vd']);
+
+    // vs2: a real vector register, unless this mnemonic fixes it to 0
+    // (vmv.v.*, a pure move with only one real source operand)
+    if (inst.vs2Fixed !== undefined) {
+      if (vs2raw !== inst.vs2Fixed) {
+        throw `Detected ${this.#mne} with invalid vs2 field`;
+      }
+      f['vs2'] = new Frag(FRAG.UNSD, this.#mne, vs2raw, 'vs2');
+    } else {
+      const vs2 = decVReg(vs2raw);
+      f['vs2'] = new Frag(FRAG.RS2, vs2, vs2raw, 'vs2');
+      this.asmFrags.push(f['vs2']);
+    }
+
+    // vs1/rs1/imm: a real operand, unless this mnemonic fixes it to a
+    // whole-register-move count selector (vmv1r.v/vmv2r.v/vmv4r.v/vmv8r.v)
+    if (inst.vs1Fixed !== undefined) {
+      f['src1'] = new Frag(FRAG.UNSD, this.#mne, src1raw, 'vs1');
+    } else if (funct3 === V_CAT.IVV) {
+      const src1 = decVReg(src1raw);
+      f['src1'] = new Frag(FRAG.RS1, src1, src1raw, 'vs1');
+      this.asmFrags.push(f['src1']);
+    } else if (funct3 === V_CAT.IVX) {
+      const src1 = decReg(src1raw);
+      f['src1'] = new Frag(FRAG.RS1, src1, src1raw, FIELDS.rs1.name);
+      this.asmFrags.push(f['src1']);
+    } else {
+      // IVI: sign- or zero-extended 5-bit immediate, depending on this
+      // mnemonic (shift amounts/gather index are zero-extended)
+      const imm = decImm(src1raw, inst.immType !== 'zi');
+      f['src1'] = new Frag(FRAG.IMM, imm, src1raw, inst.immType === 'zi' ? 'zimm5' : 'simm5');
+      this.asmFrags.push(f['src1']);
+    }
+
+    // vm suffix: only shown when vm is a real, user-controlled bit (not
+    // one of the vm-disambiguated mnemonic pairs, which fix it already)
+    if (inst.vmFixed === undefined && vm === '0') {
+      this.asmFrags.push(new Frag(FRAG.UNSD, 'v0.t', vm, FIELDS.v_vm.name));
+    }
+
+    this.binFrags.push(f['funct6'], f['vm'], f['vs2'], f['src1'], f['funct3'],
+      f['vd'], f['opcode']);
   }
 
   // V vector loads/stores: unit-stride, strided, indexed, fault-only-first,

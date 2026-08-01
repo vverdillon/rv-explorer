@@ -1172,6 +1172,36 @@ function dec_v_mem_vl2re8v() {
     assertEq(inst.asm, 'vl2re8.v v2, (x10)');
 }
 
+/*
+ * V extension - OPIVV/OPIVX/OPIVI integer arithmetic
+ */
+function dec_v_arith_vaddvv() {
+    let inst = new Instruction('002180d7');
+    assertEq(inst.asm, 'vadd.vv v1, v2, v3, v0.t');
+}
+
+function dec_v_arith_vaddvx() {
+    let inst = new Instruction('0222c0d7');
+    assertEq(inst.asm, 'vadd.vx v1, v2, x5');
+    assertEq(inst.isa, 'V');
+}
+
+function dec_v_arith_vaddvi() {
+    let inst = new Instruction('0227b0d7');
+    assertEq(inst.asm, 'vadd.vi v1, v2, 15');
+}
+
+function dec_v_arith_vmseqvx() {
+    let inst = new Instruction('6222c057');
+    assertEq(inst.asm, 'vmseq.vx v0, v2, x5');
+}
+
+function dec_v_arith_vmv1rv() {
+    // vs1 fixed to a register-count selector, not a real operand
+    let inst = new Instruction('9e2030d7');
+    assertEq(inst.asm, 'vmv1r.v v1, v2');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -1337,6 +1367,11 @@ batchTests('Decoder Tests', [
     ['Dec - V        - V-mem     - vluxei32.v', dec_v_mem_vluxei32v],
     ['Dec - V        - V-mem     - vlm.v', dec_v_mem_vlmv],
     ['Dec - V        - V-mem     - vl2re8.v', dec_v_mem_vl2re8v],
+    ['Dec - V        - V-arith   - vadd.vv - [masked]', dec_v_arith_vaddvv],
+    ['Dec - V        - V-arith   - vadd.vx', dec_v_arith_vaddvx],
+    ['Dec - V        - V-arith   - vadd.vi', dec_v_arith_vaddvi],
+    ['Dec - V        - V-arith   - vmseq.vx', dec_v_arith_vmseqvx],
+    ['Dec - V        - V-arith   - vmv1r.v', dec_v_arith_vmv1rv],
 ]);
 
 // Newline

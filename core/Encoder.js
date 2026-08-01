@@ -8,7 +8,7 @@
 
 import { BASE, XLEN_MASK, FLI_STRINGS, FIELDS, OPCODE, ISA,
   REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
-  V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vParseSegName
+  V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vParseSegName, V_CAT
 } from './Constants.js'
 
 import { COPTS_ISA } from './Config.js'
@@ -632,6 +632,10 @@ export class Encoder {
       this.#encodeVCFG();
       return;
     }
+    if (this.#inst.fmt === 'V-arith') {
+      this.#encodeVArith();
+      return;
+    }
     throw 'Unsupported OP-V instruction (vector arithmetic instructions ' +
       'not yet supported): ' + this.#mne;
   }
@@ -659,6 +663,35 @@ export class Encoder {
       const uimm = encImm(this.#opr[1], 5);
       this.bin = '11' + '00' + vtype + uimm + this.#inst.funct3 + rd + this.#inst.opcode;
     }
+  }
+
+  // V vector arithmetic: mirrors Decoder.js's #decodeVArith field layout.
+  #encodeVArith() {
+    const inst = this.#inst;
+    const vd = encVReg(this.#opr[0]);
+    let next = 1;
+
+    let vs2;
+    if (inst.vs2Fixed !== undefined) {
+      vs2 = inst.vs2Fixed;
+    } else {
+      vs2 = encVReg(this.#opr[next++]);
+    }
+
+    let src1;
+    if (inst.vs1Fixed !== undefined) {
+      src1 = inst.vs1Fixed;
+    } else if (inst.funct3 === V_CAT.IVV) {
+      src1 = encVReg(this.#opr[next++]);
+    } else if (inst.funct3 === V_CAT.IVX) {
+      src1 = encReg(this.#opr[next++]);
+    } else {
+      src1 = encImm(this.#opr[next++], 5);
+    }
+
+    const vm = inst.vmFixed ?? (this.#opr[next] === 'v0.t' ? '0' : '1');
+
+    this.bin = inst.funct6 + vm + vs2 + src1 + inst.funct3 + vd + inst.opcode;
   }
 
   // V vector loads/stores: mirrors Decoder.js's #decodeVMem field layout.
