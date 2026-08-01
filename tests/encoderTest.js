@@ -838,6 +838,19 @@ function enc_zcb_c1_cmul() {
     assertEq(inst.bin, '1001111111000001');
 }
 
+/*
+ * Zcmop extension
+ */
+function enc_zcmop_c1_cmop1() {
+    let inst = new Instruction('c.mop.1');
+    assertEq(inst.bin, '0110000010000001');
+}
+
+function enc_zcmop_c1_cmop15() {
+    let inst = new Instruction('c.mop.15');
+    assertEq(inst.bin, '0110011110000001');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -955,6 +968,8 @@ batchTests('Encoder Tests', [
     ['Enc - Zcb      - C1        - c.zext.w', enc_zcb_c1_czextw],
     ['Enc - Zcb      - C1        - c.not', enc_zcb_c1_cnot],
     ['Enc - Zcb      - C1        - c.mul', enc_zcb_c1_cmul],
+    ['Enc - Zcmop    - C1        - c.mop.1', enc_zcmop_c1_cmop1],
+    ['Enc - Zcmop    - C1        - c.mop.15', enc_zcmop_c1_cmop15],
 ]);
 
 // Newline

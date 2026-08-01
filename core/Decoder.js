@@ -12,7 +12,7 @@ import { BASE, XLEN_MASK, FLI_STRINGS,
   ISA_LOAD, ISA_STORE, ISA_BRANCH, ISA_MISC_MEM, ISA_SYSTEM, ISA_AMO,
   ISA_LOAD_FP, ISA_STORE_FP, ISA_OP_FP,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
-  ISA_C0, ISA_C1, ISA_C2,
+  ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP,
   ISA, FRAG
 } from './Constants.js'
 
@@ -1252,6 +1252,12 @@ export class Decoder {
             }
           }
         }
+        // Zcmop: c.lui's reserved nzimm=0 encoding space is repurposed for
+        // 8 specific rd/rs1 field values (c.mop.1/3/5/7/9/11/13/15);
+        // anything else with a zero immediate there remains reserved c.lui
+        if (this.#mne === 'c.lui' && fields['imm_ci_0'] === '0' && fields['imm_ci_1'] === '00000') {
+          this.#mne = ISA_C1_MOP[rdRs1Val] ?? this.#mne;
+        }
       }
     }
 
@@ -1990,6 +1996,8 @@ function extractCLookupFields(binary) {
     'zcb_subop': getBits(binary, FIELDS.c_zcb_subop.pos),
     'zcb_subop2': getBits(binary, FIELDS.c_zcb_subop2.pos),
     'zcb_subfunct3': getBits(binary, FIELDS.c_zcb_subfunct3.pos),
+    'imm_ci_0': getBits(binary, FIELDS.c_imm_ci_0.pos),
+    'imm_ci_1': getBits(binary, FIELDS.c_imm_ci_1.pos),
   };
 }
 

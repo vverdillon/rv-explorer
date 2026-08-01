@@ -997,6 +997,31 @@ export const ISA_C = {
   'c.nop':    { isa: 'C', xlens: 0b111, fmt: 'CI-type', funct3: '000', rdRs1Mask: 0b00, rdRs1Val: 0, immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
 
   'c.ebreak': { isa: 'C', xlens: 0b111, fmt: 'CR-type', funct4: '1001', rdRs1Mask: 0b00, rdRs1Val: 0, rs2Val: 0, opcode: C_OPCODE.C2 },
+
+  // Zcmop: 8 zero-operand instructions living in c.lui's reserved nzimm=0
+  // encoding space (funct3='011'), at 8 specific rd/rs1 field values
+  // (bit11=0, bit7=1, bits[10:8]=N-code). See ISA_C1_MOP and the
+  // c.lui-vs-c.mop disambiguation in Decoder.js/Encoder.js
+  'c.mop.1':  { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 1,  immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+  'c.mop.3':  { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 3,  immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+  'c.mop.5':  { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 5,  immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+  'c.mop.7':  { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 7,  immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+  'c.mop.9':  { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 9,  immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+  'c.mop.11': { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 11, immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+  'c.mop.13': { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 13, immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+  'c.mop.15': { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 15, immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+}
+
+// Zcmop lookup: c.lui's reserved nzimm=0 space, keyed by rd/rs1 field value
+export const ISA_C1_MOP = {
+  [ISA_C['c.mop.1'].rdRs1Val]:  'c.mop.1',
+  [ISA_C['c.mop.3'].rdRs1Val]:  'c.mop.3',
+  [ISA_C['c.mop.5'].rdRs1Val]:  'c.mop.5',
+  [ISA_C['c.mop.7'].rdRs1Val]:  'c.mop.7',
+  [ISA_C['c.mop.9'].rdRs1Val]:  'c.mop.9',
+  [ISA_C['c.mop.11'].rdRs1Val]: 'c.mop.11',
+  [ISA_C['c.mop.13'].rdRs1Val]: 'c.mop.13',
+  [ISA_C['c.mop.15'].rdRs1Val]: 'c.mop.15',
 }
 
 // Privileged instruction set
@@ -2246,6 +2271,8 @@ export const ISA_Subsets = {
   Zfa: ISA_Zfa,
   Zcb: pick(ISA_C, 'c.lbu', 'c.lhu', 'c.lh', 'c.sb', 'c.sh',
     'c.zext.b', 'c.sext.b', 'c.zext.h', 'c.sext.h', 'c.zext.w', 'c.not', 'c.mul'),
+  Zcmop: pick(ISA_C, 'c.mop.1', 'c.mop.3', 'c.mop.5', 'c.mop.7',
+    'c.mop.9', 'c.mop.11', 'c.mop.13', 'c.mop.15'),
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,

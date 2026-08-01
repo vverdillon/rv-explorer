@@ -657,6 +657,19 @@ function dec_zcb_c1_cmul() {
 }
 
 /*
+ * Zcmop extension
+ */
+function dec_zcmop_c1_cmop1() {
+    let inst = new Instruction('0110000010000001');
+    assertEq(inst.asm, 'c.mop.1');
+}
+
+function dec_zcmop_c1_cmop15() {
+    let inst = new Instruction('0110011110000001');
+    assertEq(inst.asm, 'c.mop.15');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1070,6 +1083,8 @@ batchTests('Decoder Tests', [
     ['Dec - Zcb      - C1        - c.zext.w', dec_zcb_c1_czextw],
     ['Dec - Zcb      - C1        - c.not', dec_zcb_c1_cnot],
     ['Dec - Zcb      - C1        - c.mul', dec_zcb_c1_cmul],
+    ['Dec - Zcmop    - C1        - c.mop.1', dec_zcmop_c1_cmop1],
+    ['Dec - Zcmop    - C1        - c.mop.15', dec_zcmop_c1_cmop15],
 ]);
 
 // Newline
