@@ -457,6 +457,15 @@ export class Encoder {
         ? encReg(src)
         : encImm(src, FIELDS.rs1.pos[1]);
 
+    } else if (this.#inst.funct7 !== undefined) {
+      // Svinval-like instructions (sinval.vma/hinval.vvma/hinval.gvma):
+      // fixed funct7, rd fixed to 0, rs1/rs2 are real registers
+      const src1 = this.#opr[0], src2 = this.#opr[1];
+
+      rs1 = encReg(src1);
+      rd = ''.padStart(FIELDS.rd.pos[1], '0');
+      imm = this.#inst.funct7 + encReg(src2);
+
     } else {
       // Trap instructions
       rs1 = ''.padStart(FIELDS.rs1.pos[1], '0');

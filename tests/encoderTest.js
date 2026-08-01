@@ -890,6 +890,27 @@ function enc_smrnmi_system_mnret() {
     assertEq(inst.hex, '70200073');
 }
 
+/*
+ * Svinval extension
+ */
+function enc_svinval_system_sfenceinvalir() {
+    let inst = new Instruction('sfence.inval.ir');
+    assertEq(inst.hex, '18100073');
+}
+
+function enc_svinval_system_sinvalvma() {
+    let inst = new Instruction('sinval.vma x5, x6');
+    let instAbi = new Instruction('sinval.vma t0, t1');
+    assertEq(inst.hex, '16628073');
+    assertEq(instAbi.hex, inst.hex);
+}
+
+function enc_svinval_system_hinvalgvma() {
+    let inst = new Instruction('hinval.gvma x0, x0');
+    assertEq(inst.hex, '66000073');
+    assertEq(inst.isa, 'Svinval_H');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1015,6 +1036,9 @@ batchTests('Encoder Tests', [
     ['Enc - Zcmp     - C2        - cm.popret', enc_zcmp_c2_cmpopret],
     ['Enc - Zcmp     - C2        - cm.mvsa01', enc_zcmp_c2_cmmvsa01],
     ['Enc - Smrnmi   - SYSTEM    - mnret', enc_smrnmi_system_mnret],
+    ['Enc - Svinval  - SYSTEM    - sfence.inval.ir', enc_svinval_system_sfenceinvalir],
+    ['Enc - Svinval  - SYSTEM    - sinval.vma', enc_svinval_system_sinvalvma],
+    ['Enc - Svinval  - SYSTEM    - hinval.gvma', enc_svinval_system_hinvalgvma],
 ]);
 
 // Newline

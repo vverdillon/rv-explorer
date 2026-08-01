@@ -861,14 +861,22 @@ export class Decoder {
 
     // Trap instructions - determine mnemonic from funct12
     let trap = (typeof this.#mne !== 'string');
+    // Svinval-like instructions (sinval.vma/hinval.vvma/hinval.gvma): fixed
+    // 7-bit funct7 (the top of what would otherwise be funct12), rd fixed
+    // to 0, but rs1/rs2 are real registers rather than fixed to 0
+    let rTypeLike = false;
     if (trap) {
       this.#mne = this.#mne[funct12];
+      if (this.#mne === undefined) {
+        this.#mne = ISA_SYSTEM[funct3][funct12.substring(0, 7)];
+        rTypeLike = this.#mne !== undefined;
+      }
       if (this.#mne === undefined) {
         throw "Detected SYSTEM instruction but invalid funct12 field";
       }
       // Check registers
-      if (rd !== '00000' || rs1 !== '00000') {
-        throw "Registers rd and rs1 should be 0 for mne " + this.#mne;
+      if (rTypeLike ? rd !== '00000' : (rd !== '00000' || rs1 !== '00000')) {
+        throw "Register rd should be 0 for mne " + this.#mne;
       }
     }
 
@@ -878,8 +886,26 @@ export class Decoder {
       funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.funct3.name),
     };
 
+    // Svinval-like instructions - create specific fragments and render
+    if (rTypeLike) {
+      const funct7 = funct12.substring(0, 7),
+        rs2 = funct12.substring(7);
+      const src1 = decReg(rs1), src2 = decReg(rs2);
+
+      f['funct7'] = new Frag(FRAG.OPC, this.#mne, funct7, FIELDS.r_funct7.name);
+      f['rs2'] = new Frag(FRAG.RS2, src2, rs2, FIELDS.rs2.name);
+      f['rs1'] = new Frag(FRAG.RS1, src1, rs1, FIELDS.rs1.name);
+      f['rd']  = new Frag(FRAG.UNSD, this.#mne, rd, FIELDS.rd.name);
+
+      // Assembly fragments in order of instruction
+      this.asmFrags.push(f['opcode'], f['rs1'], f['rs2']);
+
+      // Binary fragments from MSB to LSB
+      this.binFrags.push(f['funct7'], f['rs2'], f['rs1'], f['funct3'], f['rd'],
+        f['opcode']);
+
     // Trap instructions - create specific fragments and render
-    if (trap) {
+    } else if (trap) {
       // Create remaining fragments
       f['rd'] = new Frag(FRAG.OPC, this.#mne, rd, FIELDS.rd.name);
       f['rs1'] = new Frag(FRAG.OPC, this.#mne, rs1, FIELDS.rs1.name);

@@ -1096,6 +1096,19 @@ export const ISA_Smrnmi = {
   mnret: { isa: 'Smrnmi', fmt: 'I-type', funct12: '011100000010', funct3: '000', opcode: OPCODE.SYSTEM },
 }
 
+// Svinval (fine-grained address-translation cache invalidation) instruction set
+export const ISA_Svinval = {
+  // Fully-fixed forms (rd=rs1=0)
+  'sfence.w.inval':  { isa: 'Svinval', fmt: 'I-type', funct12: '000110000000', funct3: '000', opcode: OPCODE.SYSTEM },
+  'sfence.inval.ir': { isa: 'Svinval', fmt: 'I-type', funct12: '000110000001', funct3: '000', opcode: OPCODE.SYSTEM },
+
+  // R-type-like forms: fixed 7-bit funct7 (top of what would otherwise be
+  // funct12), rd fixed to 0, rs1/rs2 real registers
+  'sinval.vma':  { isa: 'Svinval',   fmt: 'R-type', funct7: '0001011', funct3: '000', opcode: OPCODE.SYSTEM },
+  'hinval.vvma': { isa: 'Svinval_H', fmt: 'R-type', funct7: '0010011', funct3: '000', opcode: OPCODE.SYSTEM },
+  'hinval.gvma': { isa: 'Svinval_H', fmt: 'R-type', funct7: '0110011', funct3: '000', opcode: OPCODE.SYSTEM },
+}
+
 
 // ISA per opcode
 export const ISA_OP = {
@@ -1388,6 +1401,14 @@ export const ISA_SYSTEM = {
     [ISA_Zawrs['wrs.nto'].funct12]: 'wrs.nto',
     [ISA_Zawrs['wrs.sto'].funct12]: 'wrs.sto',
     [ISA_Smrnmi['mnret'].funct12]:  'mnret',
+    [ISA_Svinval['sfence.w.inval'].funct12]:  'sfence.w.inval',
+    [ISA_Svinval['sfence.inval.ir'].funct12]: 'sfence.inval.ir',
+    // R-type-like forms (fixed 7-bit funct7, real rs1/rs2): looked up via
+    // this same funct12 key's 7-bit prefix when the full 12-bit match
+    // misses - see the fallback in Decoder.js/Encoder.js
+    [ISA_Svinval['sinval.vma'].funct7]:   'sinval.vma',
+    [ISA_Svinval['hinval.vvma'].funct7]:  'hinval.vvma',
+    [ISA_Svinval['hinval.gvma'].funct7]:  'hinval.gvma',
   },
   [ISA_Zicsr['csrrw'].funct3]:  'csrrw',
   [ISA_Zicsr['csrrs'].funct3]:  'csrrs',
@@ -2293,7 +2314,7 @@ export const ISA = Object.assign({},
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfa,
-  ISA_Smrnmi,
+  ISA_Smrnmi, ISA_Svinval,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -2347,5 +2368,6 @@ export const ISA_Subsets = {
   Zfh: ISA_Zfh,
   Zfhmin: ISA_Zfhmin,
   Smrnmi: ISA_Smrnmi,
+  Svinval: ISA_Svinval,
   Priv: ISA_Priv
 }

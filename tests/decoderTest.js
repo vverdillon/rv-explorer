@@ -713,6 +713,28 @@ function dec_smrnmi_system_mnret() {
 }
 
 /*
+ * Svinval extension
+ */
+function dec_svinval_system_sfencewinval() {
+    let inst = new Instruction('18000073');
+    assertEq(inst.asm, 'sfence.w.inval');
+}
+
+function dec_svinval_system_sinvalvma() {
+    let inst = new Instruction('16628073');
+    let instAbi = new Instruction('16628073', { ABI:true });
+    assertEq(inst.asm, 'sinval.vma x5, x6');
+    assertEq(instAbi.asm, 'sinval.vma t0, t1');
+}
+
+function dec_svinval_system_hinvalvvma() {
+    // hinval.vvma additionally requires H; tagged Svinval_H
+    let inst = new Instruction('26628073');
+    assertEq(inst.asm, 'hinval.vvma x5, x6');
+    assertEq(inst.isa, 'Svinval_H');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1134,6 +1156,9 @@ batchTests('Decoder Tests', [
     ['Dec - Zcmp     - C2        - cm.popret', dec_zcmp_c2_cmpopret],
     ['Dec - Zcmp     - C2        - cm.mvsa01', dec_zcmp_c2_cmmvsa01],
     ['Dec - Smrnmi   - SYSTEM    - mnret', dec_smrnmi_system_mnret],
+    ['Dec - Svinval  - SYSTEM    - sfence.w.inval', dec_svinval_system_sfencewinval],
+    ['Dec - Svinval  - SYSTEM    - sinval.vma', dec_svinval_system_sinvalvma],
+    ['Dec - Svinval  - SYSTEM    - hinval.vvma', dec_svinval_system_hinvalvvma],
 ]);
 
 // Newline
