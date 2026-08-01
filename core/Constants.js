@@ -74,6 +74,9 @@ export const FIELDS = {
   r_fp_fmt: { pos: [26, 2], name: 'fmt' },
   r_fp_rm:  { pos: [14, 3], name: 'rm' },
 
+  // R-type: Zksed "byte select" immediate carved out of the top of funct7
+  r_bs: { pos: [31, 2], name: 'bs' },
+
   // I-type
   i_imm_11_0: { pos: [31, 12], name: 'imm[11:0]' },
 
@@ -465,6 +468,20 @@ export const ISA_Zknh = {
   'sha512sum1': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000101', funct3: '001', opcode: OPCODE.OP_IMM },
   'sha512sig0': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000110', funct3: '001', opcode: OPCODE.OP_IMM },
   'sha512sig1': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000111', funct3: '001', opcode: OPCODE.OP_IMM },
+}
+
+// Zksed (ShangMi suite: SM4 block cipher) instruction set
+//   sm4ed/sm4ks carve a 2-bit "byte select" immediate out of the top of
+//   funct7 (bits[31:30]), leaving only funct7base (bits[29:25]) fixed
+export const ISA_Zksed = {
+  'sm4ed': { isa: 'Zksed', fmt: 'R-type', funct7base: '11000', funct3: '000', opcode: OPCODE.OP },
+  'sm4ks': { isa: 'Zksed', fmt: 'R-type', funct7base: '11010', funct3: '000', opcode: OPCODE.OP },
+}
+
+// Zksh (ShangMi suite: SM3 hash function) instruction set
+export const ISA_Zksh = {
+  'sm3p0': { isa: 'Zksh', fmt: 'I-type', funct12: '000100001000', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sm3p1': { isa: 'Zksh', fmt: 'I-type', funct12: '000100001001', funct3: '001', opcode: OPCODE.OP_IMM },
 }
 
 // Zicond (integer conditional operations) instruction set
@@ -906,6 +923,13 @@ export const ISA_OP = {
   [ISA_Zkne['aes64es'].funct7  + ISA_Zkne['aes64es'].funct3]:  'aes64es',
 }
 
+// R-type instructions on the OP opcode whose funct7 carves out a 2-bit
+// "byte select" immediate at bits[31:30] (Zksed), keyed by funct7base+funct3
+export const ISA_OP_BS = {
+  [ISA_Zksed['sm4ed'].funct7base + ISA_Zksed['sm4ed'].funct3]: 'sm4ed',
+  [ISA_Zksed['sm4ks'].funct7base + ISA_Zksed['sm4ks'].funct3]: 'sm4ks',
+}
+
 export const ISA_OP_32 = {
   // RV64I
   [ISA_RV64I['addw'].funct7 + ISA_RV64I['addw'].funct3]: 'addw',
@@ -1017,6 +1041,8 @@ export const ISA_OP_IMM = {
       [ISA_Zknh['sha512sum1'].funct12.substring(6)]: 'sha512sum1',
       [ISA_Zknh['sha512sig0'].funct12.substring(6)]: 'sha512sig0',
       [ISA_Zknh['sha512sig1'].funct12.substring(6)]: 'sha512sig1',
+      [ISA_Zksh['sm3p0'].funct12.substring(6)]:      'sm3p0',
+      [ISA_Zksh['sm3p1'].funct12.substring(6)]:      'sm3p1',
     },
     // aes64im (fully-fixed funct12) and aes64ks1i (8-bit prefix + 4-bit rnum)
     // share this 6-bit prefix but need a further 2-bit split to tell them
@@ -1937,7 +1963,7 @@ export const ISA = Object.assign({},
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
-  ISA_Zknd, ISA_Zkne, ISA_Zknh,
+  ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin,
   ISA_Priv);
 
@@ -1972,6 +1998,8 @@ export const ISA_Subsets = {
     'aes64ks1i': ISA_Zknd['aes64ks1i'], 'aes64ks2': ISA_Zknd['aes64ks2'],
   }),
   Zknh: ISA_Zknh,
+  Zksed: ISA_Zksed,
+  Zksh: ISA_Zksh,
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,

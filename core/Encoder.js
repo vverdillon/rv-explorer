@@ -230,8 +230,18 @@ export class Encoder {
     // Convert to binary representation
     const rd = encReg(dest), rs1 = encReg(src1), rs2 = encReg(src2);
 
+    let funct7 = this.#inst.funct7;
+    if (funct7 === undefined) {
+      // Zksed: 2-bit "byte select" immediate occupies the top of funct7
+      const bs = this.#opr[3];
+      if (bs < 0 || bs > 3) {
+        throw 'Invalid bs field (out of range): "' + bs + '"';
+      }
+      funct7 = encImm(bs, 2) + this.#inst.funct7base;
+    }
+
     // Construct binary instruction
-    this.bin = this.#inst.funct7 + rs2 + rs1 + this.#inst.funct3 + rd +
+    this.bin = funct7 + rs2 + rs1 + this.#inst.funct3 + rd +
       this.#inst.opcode;
   }
 

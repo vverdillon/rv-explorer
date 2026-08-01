@@ -747,6 +747,21 @@ function enc_zknh_opimm_sha256sum0() {
     assertEq(inst.isa, 'Zknh');
 }
 
+/*
+ * Zksed/Zksh extensions
+ */
+function enc_zksed_op_sm4ks() {
+    let inst = new Instruction('sm4ks x5, x6, x7, 2');
+    assertEq(inst.hex, 'b47302b3');
+    assertEq(inst.isa, 'Zksed');
+}
+
+function enc_zksh_opimm_sm3p1() {
+    let inst = new Instruction('sm3p1 x5, x6');
+    assertEq(inst.hex, '10931293');
+    assertEq(inst.isa, 'Zksh');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -850,6 +865,8 @@ batchTests('Encoder Tests', [
     ['Enc - Zknd     - OP        - aes64ks2', enc_zknd_op_aes64ks2],
     ['Enc - Zkne     - OP        - aes32esi', enc_zkne_op_aes32esi],
     ['Enc - Zknh     - OP-IMM    - sha256sum0', enc_zknh_opimm_sha256sum0],
+    ['Enc - Zksed    - OP        - sm4ks', enc_zksed_op_sm4ks],
+    ['Enc - Zksh     - OP-IMM    - sm3p1', enc_zksh_opimm_sm3p1],
 ]);
 
 // Newline

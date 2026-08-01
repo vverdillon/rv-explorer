@@ -844,6 +844,21 @@ function dec_zknh_op_sha512sig0l() {
     assertEq(inst.isa, 'RV32Zknh');
 }
 
+/*
+ * Zksed/Zksh extensions
+ */
+function dec_zksed_op_sm4ed() {
+    let inst = new Instruction('707302b3');
+    assertEq(inst.asm, 'sm4ed x5, x6, x7, 1');
+    assertEq(inst.isa, 'Zksed');
+}
+
+function dec_zksh_opimm_sm3p0() {
+    let inst = new Instruction('10831293');
+    assertEq(inst.asm, 'sm3p0 x5, x6');
+    assertEq(inst.isa, 'Zksh');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -961,6 +976,8 @@ batchTests('Decoder Tests', [
     ['Dec - Zknh     - OP-IMM    - sha256sig0', dec_zknh_opimm_sha256sig0],
     ['Dec - Zknh     - OP-IMM    - sha512sig0', dec_zknh_opimm_sha512sig0],
     ['Dec - Zknh     - OP        - sha512sig0l', dec_zknh_op_sha512sig0l],
+    ['Dec - Zksed    - OP        - sm4ed', dec_zksed_op_sm4ed],
+    ['Dec - Zksh     - OP-IMM    - sm3p0', dec_zksh_opimm_sm3p0],
 ]);
 
 // Newline

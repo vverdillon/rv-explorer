@@ -8,7 +8,7 @@
 
 import { BASE, XLEN_MASK,
   FIELDS, OPCODE, C_OPCODE, REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
-  ISA_OP, ISA_OP_32, ISA_OP_64, ISA_OP_IMM, ISA_OP_IMM_32, ISA_OP_IMM_64,
+  ISA_OP, ISA_OP_32, ISA_OP_64, ISA_OP_BS, ISA_OP_IMM, ISA_OP_IMM_32, ISA_OP_IMM_64,
   ISA_LOAD, ISA_STORE, ISA_BRANCH, ISA_MISC_MEM, ISA_SYSTEM, ISA_AMO,
   ISA_LOAD_FP, ISA_STORE_FP, ISA_OP_FP,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
@@ -287,6 +287,15 @@ export class Decoder {
       this.#mne = ISA_OP[funct7 + funct3];
       opcodeName = "OP";
     }
+
+    // Some crypto instructions (Zksed) carve a 2-bit "byte select" immediate
+    // out of the top of funct7 (bits[31:30]), leaving only its lower 5 bits
+    // (funct7base) fixed
+    let bs;
+    if (this.#mne === undefined && this.#opcode === OPCODE.OP) {
+      this.#mne = ISA_OP_BS[funct7.substring(2) + funct3];
+      bs = funct7.substring(0, 2);
+    }
     if (this.#mne === undefined) {
       throw `Detected ${opcodeName} instruction but invalid funct7 and funct3 fields`;
     }
@@ -300,7 +309,8 @@ export class Decoder {
     const f = {
       opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.opcode.name),
       funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.funct3.name),
-      funct7: new Frag(FRAG.OPC, this.#mne, funct7, FIELDS.r_funct7.name),
+      funct7: new Frag(FRAG.OPC, this.#mne, bs !== undefined ? funct7.substring(2) : funct7,
+        FIELDS.r_funct7.name),
       rd:     new Frag(FRAG.RD, dest, rd, FIELDS.rd.name),
       rs1:    new Frag(FRAG.RS1, src1, rs1, FIELDS.rs1.name),
       rs2:    new Frag(FRAG.RS2, src2, rs2, FIELDS.rs2.name),
@@ -308,6 +318,16 @@ export class Decoder {
 
     // Assembly fragments in order of instruction
     this.asmFrags.push(f['opcode'], f['rd'], f['rs1'], f['rs2']);
+
+    if (bs !== undefined) {
+      const bsVal = decImm(bs, false);
+      f['bs'] = new Frag(FRAG.IMM, bsVal, bs, FIELDS.r_bs.name);
+      this.asmFrags.push(f['bs']);
+
+      this.binFrags.push(f['bs'], f['funct7'], f['rs2'], f['rs1'], f['funct3'],
+        f['rd'], f['opcode']);
+      return;
+    }
 
     // Binary fragments from MSB to LSB
     this.binFrags.push(f['funct7'], f['rs2'], f['rs1'], f['funct3'], f['rd'],
