@@ -7,7 +7,8 @@
  */
 
 import { BASE, XLEN_MASK, FLI_STRINGS, FIELDS, OPCODE, ISA,
-  REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR
+  REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
+  V_SEW, V_LMUL
 } from './Constants.js'
 
 import { COPTS_ISA } from './Config.js'
@@ -167,6 +168,9 @@ export class Encoder {
           break;
         case OPCODE.OP_FP:
           this.#encodeOP_FP();
+          break;
+        case OPCODE.OP_V:
+          this.#encodeOP_V();
           break;
         case OPCODE.AMO:
           this.#encodeAMO();
@@ -594,6 +598,43 @@ export class Encoder {
 
     // Construct binary instruction
     this.bin = imm_20 + imm_10_1 + imm_11 + imm_19_12 + rd + this.#inst.opcode;
+  }
+
+  /**
+   * Encodes OP-V (vector) instructions
+   */
+  #encodeOP_V() {
+    if (this.#inst.fmt === 'V-cfg') {
+      this.#encodeVCFG();
+      return;
+    }
+    throw 'Unsupported OP-V instruction (vector arithmetic instructions ' +
+      'not yet supported): ' + this.#mne;
+  }
+
+  // vsetvli rd, rs1, vtypei / vsetivli rd, uimm, vtypei / vsetvl rd, rs1, rs2
+  #encodeVCFG() {
+    const rd = encReg(this.#opr[0]);
+
+    if (this.#mne === 'vsetvl') {
+      const rs1 = encReg(this.#opr[1]), rs2 = encReg(this.#opr[2]);
+      this.bin = this.#inst.funct7 + rs2 + rs1 + this.#inst.funct3 + rd + this.#inst.opcode;
+      return;
+    }
+
+    // Both vsetvli and vsetivli take the vtype tokens starting at opr[2]:
+    // sew (required), lmul/ta/ma (optional, default m1/tu/mu)
+    const vtype = encVtype(this.#opr[2], this.#opr[3], this.#opr[4], this.#opr[5]);
+
+    if (this.#mne === 'vsetvli') {
+      const rs1 = encReg(this.#opr[1]);
+      // bit31=0, zimm11[10:8]=reserved(0), zimm11[7:0]=vtype
+      this.bin = '0' + '000' + vtype + rs1 + this.#inst.funct3 + rd + this.#inst.opcode;
+    } else {
+      // vsetivli: bit31:30='11', zimm10[9:8]=reserved(0), zimm10[7:0]=vtype
+      const uimm = encImm(this.#opr[1], 5);
+      this.bin = '11' + '00' + vtype + uimm + this.#inst.funct3 + rd + this.#inst.opcode;
+    }
   }
 
   /**
@@ -1082,6 +1123,43 @@ function encFli(value) {
     throw `Invalid fli constant: "${value}"`;
   }
   return convertBase(idx, BASE.dec, BASE.bin, 5);
+}
+
+// V register: v0-v31, no ABI aliases
+function encVReg(reg) {
+  if (reg === undefined || reg.length === 0) {
+    return '00000';
+  }
+  const match = /^v(\d+)$/.exec(reg);
+  if (match === null) {
+    throw `Invalid or unknown vector register format: "${reg}"`;
+  }
+  const dec = parseInt(match[1]);
+  if (dec < 0 || dec > 31) {
+    throw `Register address out of range: "${reg}"`;
+  }
+  return convertBase(dec, BASE.dec, BASE.bin, 5);
+}
+
+// vsetvli/vsetivli's vtypei immediate: encodes the 4 canonical assembly
+// tokens (sew required, lmul/ta/ma optional, defaulting to m1/tu/mu) into
+// the 8-bit vma/vta/vsew/vlmul value
+function encVtype(sew, lmul = 'm1', ta = 'tu', ma = 'mu') {
+  const vsew = Object.entries(V_SEW).find(e => e[1] === sew)?.[0];
+  const vlmul = Object.entries(V_LMUL).find(e => e[1] === lmul)?.[0];
+  if (vsew === undefined) {
+    throw `Invalid vtype SEW: "${sew}"`;
+  }
+  if (vlmul === undefined) {
+    throw `Invalid vtype LMUL: "${lmul}"`;
+  }
+  if (ta !== 'ta' && ta !== 'tu') {
+    throw `Invalid vtype tail policy: "${ta}"`;
+  }
+  if (ma !== 'ma' && ma !== 'mu') {
+    throw `Invalid vtype mask policy: "${ma}"`;
+  }
+  return (ma === 'ma' ? '1' : '0') + (ta === 'ta' ? '1' : '0') + vsew + vlmul;
 }
 
 // Zcmp cm.mvsa01/cm.mva01s: encodes a restricted s-register (s0-s1 or

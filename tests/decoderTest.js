@@ -1124,6 +1124,25 @@ function dec_zfa_opfp_fcvtmodwd() {
     assertEq(inst.isa, 'RV32Zfa');
 }
 
+/*
+ * V extension - configuration instructions
+ */
+function dec_v_cfg_vsetvli() {
+    let inst = new Instruction('0d1372d7');
+    assertEq(inst.asm, 'vsetvli x5, x6, e32, m2, ta, ma');
+    assertEq(inst.isa, 'V');
+}
+
+function dec_v_cfg_vsetivli() {
+    let inst = new Instruction('cc07f2d7');
+    assertEq(inst.asm, 'vsetivli x5, 15, e8, m1, ta, ma');
+}
+
+function dec_v_cfg_vsetvl() {
+    let inst = new Instruction('807372d7');
+    assertEq(inst.asm, 'vsetvl x5, x6, x7');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -1281,6 +1300,9 @@ batchTests('Decoder Tests', [
     ['Dec - Ssctr    - SYSTEM    - sctrclr', dec_ssctr_system_sctrclr],
     ['Dec - Zfbfmin  - OP-FP     - fcvt.bf16.s', dec_zfbfmin_opfp_fcvtbf16s],
     ['Dec - Zfbfmin  - OP-FP     - fcvt.s.bf16', dec_zfbfmin_opfp_fcvtsbf16],
+    ['Dec - V        - V-cfg     - vsetvli', dec_v_cfg_vsetvli],
+    ['Dec - V        - V-cfg     - vsetivli', dec_v_cfg_vsetivli],
+    ['Dec - V        - V-cfg     - vsetvl', dec_v_cfg_vsetvl],
 ]);
 
 // Newline

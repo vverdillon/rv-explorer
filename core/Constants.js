@@ -212,6 +212,26 @@ export const FIELDS = {
   // ISA_C: Zcmp cm.mvsa01/cm.mva01s restricted s-register fields
   c_sreg1: { pos: [9, 3], name: 'sreg1' },
   c_sreg2: { pos: [4, 3], name: 'sreg2' },
+
+  // V (vector): arithmetic instructions share the R-type field layout
+  // (funct7 = funct6+vm, rs2 = vs2, rs1 = vs1/rs1/fs1/simm5/zimm5, rd = vd/rd)
+  v_funct6: { pos: [31, 6], name: 'funct6' },
+  v_vm:     { pos: [25, 1], name: 'vm' },
+
+  // V: vector loads/stores (funct7 split differently: nf/mop/mew, with vm
+  // occupying the same bit as in arithmetic instructions)
+  v_nf:     { pos: [31, 3], name: 'nf' },
+  v_mew:    { pos: [28, 1], name: 'mew' },
+  v_mop:    { pos: [27, 2], name: 'mop' },
+  v_lumop:  { pos: [24, 5], name: 'lumop' },
+  v_sumop:  { pos: [24, 5], name: 'sumop' },
+  v_width:  { pos: [14, 3], name: 'width' },
+  v_vs3:    { pos: [11, 5], name: 'vs3' },
+
+  // V: vsetvli/vsetivli/vsetvl configuration instructions
+  v_zimm11: { pos: [30, 11], name: 'zimm[10:0]' },
+  v_zimm10: { pos: [29, 10], name: 'zimm[9:0]' },
+  v_zimm5:  { pos: [19, 5],  name: 'zimm[4:0]' },
 }
 
 
@@ -238,6 +258,7 @@ export const OPCODE = {
   NMSUB:    '1001011',
   NMADD:    '1001111',
   OP_FP:    '1010011',
+  OP_V:     '1010111',
   OP_IMM_64:'1011011',
   BRANCH:   '1100011',
   JALR:     '1100111',
@@ -1210,6 +1231,27 @@ for (const name of ['hlv.b', 'hlv.bu', 'hlv.h', 'hlv.hu', 'hlvx.hu', 'hlv.w', 'h
 }
 for (const name of ['hsv.b', 'hsv.h', 'hsv.w', 'hsv.d']) {
   ISA_SYSTEM_100[ISA_H[name].funct7] = name;
+}
+
+// V (vector) instruction set: vector-configuration instructions.
+// vsetvli/vsetivli/vsetvl all live on OP_V's funct3='111' bucket,
+// disambiguated by bit31 (and bit30 for vsetivli vs vsetvli) - handled
+// directly in Decoder.js/Encoder.js rather than via a lookup table since
+// there are only 3 variants.
+export const ISA_V = {
+  vsetvli:  { isa: 'V', fmt: 'V-cfg', funct3: '111', opcode: OPCODE.OP_V },
+  vsetivli: { isa: 'V', fmt: 'V-cfg', funct3: '111', opcode: OPCODE.OP_V },
+  vsetvl:   { isa: 'V', fmt: 'V-cfg', funct3: '111', funct7: '1000000', opcode: OPCODE.OP_V },
+}
+
+// vtype's vsew (element width) and vlmul (grouping multiplier) sub-fields,
+// shared by vsetvli/vsetivli's immediate and vsetvl's rs2 register value
+export const V_SEW = {
+  '000': 'e8', '001': 'e16', '010': 'e32', '011': 'e64',
+}
+export const V_LMUL = {
+  '000': 'm1', '001': 'm2', '010': 'm4', '011': 'm8',
+  '101': 'mf8', '110': 'mf4', '111': 'mf2',
 }
 
 
@@ -2432,7 +2474,7 @@ export const ISA = Object.assign({},
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfbfmin, ISA_Zfa,
   ISA_Smrnmi, ISA_Svinval, ISA_Zimop, ISA_Zicfiss, ISA_H,
-  ISA_S, ISA_Sdext, ISA_Ssctr,
+  ISA_S, ISA_Sdext, ISA_Ssctr, ISA_V,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -2494,5 +2536,6 @@ export const ISA_Subsets = {
   S: ISA_S,
   Sdext: ISA_Sdext,
   Ssctr: ISA_Ssctr,
+  V: ISA_V,
   Priv: ISA_Priv
 }

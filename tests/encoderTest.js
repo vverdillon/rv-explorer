@@ -997,6 +997,25 @@ function enc_zfbfmin_opfp_fcvtsbf16() {
     assertEq(inst.isa, 'Zfbfmin');
 }
 
+/*
+ * V extension - configuration instructions
+ */
+function enc_v_cfg_vsetvli() {
+    let inst = new Instruction('vsetvli x0, x0, e32, m1, ta, ma');
+    assertEq(inst.hex, '0d007057');
+    assertEq(inst.isa, 'V');
+}
+
+function enc_v_cfg_vsetivli() {
+    let inst = new Instruction('vsetivli x0, 8, e16, mf2, ta, ma');
+    assertEq(inst.hex, 'ccf47057');
+}
+
+function enc_v_cfg_vsetvl() {
+    let inst = new Instruction('vsetvl x0, x5, x6');
+    assertEq(inst.hex, '8062f057');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1137,6 +1156,9 @@ batchTests('Encoder Tests', [
     ['Enc - Ssctr    - SYSTEM    - sctrclr', enc_ssctr_system_sctrclr],
     ['Enc - Zfbfmin  - OP-FP     - fcvt.bf16.s', enc_zfbfmin_opfp_fcvtbf16s],
     ['Enc - Zfbfmin  - OP-FP     - fcvt.s.bf16', enc_zfbfmin_opfp_fcvtsbf16],
+    ['Enc - V        - V-cfg     - vsetvli', enc_v_cfg_vsetvli],
+    ['Enc - V        - V-cfg     - vsetivli', enc_v_cfg_vsetivli],
+    ['Enc - V        - V-cfg     - vsetvl', enc_v_cfg_vsetvl],
 ]);
 
 // Newline

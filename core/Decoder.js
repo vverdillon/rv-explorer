@@ -13,6 +13,7 @@ import { BASE, XLEN_MASK, FLI_STRINGS,
   ISA_LOAD_FP, ISA_STORE_FP, ISA_OP_FP,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
   ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP, ISA_C2_ZCMP,
+  V_SEW, V_LMUL,
   ISA, FRAG
 } from './Constants.js'
 
@@ -87,6 +88,9 @@ export class Decoder {
           break;
         case OPCODE.OP_FP:
           this.#decodeOP_FP();
+          break;
+        case OPCODE.OP_V:
+          this.#decodeOP_V();
           break;
         case OPCODE.AMO:
           this.#decodeAMO();
@@ -1159,6 +1163,95 @@ export class Decoder {
     // Binary fragments from MSB to LSB
     this.binFrags.push(f['imm_20'], f['imm_10_1'], f['imm_11'], f['imm_19_12'],
       f['rd'], f['opcode']);
+  }
+
+  /**
+   * Decodes OP-V (vector) instructions
+   */
+  #decodeOP_V() {
+    const funct3 = getBits(this.#bin, FIELDS.funct3.pos);
+
+    if (funct3 === '111') {
+      this.#decodeVCFG();
+      return;
+    }
+
+    throw 'Detected OP-V instruction with unsupported funct3 (vector ' +
+      'arithmetic instructions not yet supported)';
+  }
+
+  // vsetvli/vsetivli/vsetvl: distinguished by bit31 (and bit30 for
+  // vsetivli vs vsetvli), each with its own field layout
+  #decodeVCFG() {
+    const rd = getBits(this.#bin, FIELDS.rd.pos);
+    const funct3 = getBits(this.#bin, FIELDS.funct3.pos);
+    const bit31 = this.#bin[0];
+    const dest = decReg(rd);
+
+    const f = {
+      opcode: new Frag(FRAG.OPC, '', this.#opcode, FIELDS.opcode.name),
+      funct3: new Frag(FRAG.OPC, '', funct3, FIELDS.funct3.name),
+      rd:     new Frag(FRAG.RD, dest, rd, FIELDS.rd.name),
+    };
+
+    if (bit31 === '0') {
+      // vsetvli rd, rs1, vtypei
+      this.#mne = 'vsetvli';
+      const zimm11 = getBits(this.#bin, FIELDS.v_zimm11.pos);
+      const rs1 = getBits(this.#bin, FIELDS.rs1.pos);
+      const src = decReg(rs1);
+      const vtype = decVtype(zimm11);
+
+      f['opcode'].asm = f['funct3'].asm = this.#mne;
+      f['bit31'] = new Frag(FRAG.OPC, this.#mne, bit31, 'bit31');
+      f['zimm11'] = new Frag(FRAG.IMM, vtype.join(','), zimm11, FIELDS.v_zimm11.name);
+      f['rs1'] = new Frag(FRAG.RS1, src, rs1, FIELDS.rs1.name);
+
+      this.asmFrags.push(f['opcode'], f['rd'], f['rs1']);
+      for (const tok of vtype) {
+        this.asmFrags.push(new Frag(FRAG.IMM, tok, zimm11, FIELDS.v_zimm11.name));
+      }
+      this.binFrags.push(f['bit31'], f['zimm11'], f['rs1'], f['funct3'],
+        f['rd'], f['opcode']);
+    } else if (this.#bin[1] === '1') {
+      // vsetivli rd, uimm, vtypei
+      this.#mne = 'vsetivli';
+      const zimm10 = getBits(this.#bin, FIELDS.v_zimm10.pos);
+      const zimm5 = getBits(this.#bin, FIELDS.v_zimm5.pos);
+      const uimm = decImm(zimm5, false);
+      const vtype = decVtype(zimm10);
+
+      f['opcode'].asm = f['funct3'].asm = this.#mne;
+      f['bit31_30'] = new Frag(FRAG.OPC, this.#mne, this.#bin.substring(0, 2), 'bit31:30');
+      f['zimm10'] = new Frag(FRAG.IMM, vtype.join(','), zimm10, FIELDS.v_zimm10.name);
+      f['zimm5'] = new Frag(FRAG.IMM, uimm, zimm5, FIELDS.v_zimm5.name);
+
+      this.asmFrags.push(f['opcode'], f['rd'], f['zimm5']);
+      for (const tok of vtype) {
+        this.asmFrags.push(new Frag(FRAG.IMM, tok, zimm10, FIELDS.v_zimm10.name));
+      }
+      this.binFrags.push(f['bit31_30'], f['zimm10'], f['zimm5'], f['funct3'],
+        f['rd'], f['opcode']);
+    } else {
+      // vsetvl rd, rs1, rs2
+      const funct7 = getBits(this.#bin, FIELDS.r_funct7.pos);
+      if (funct7 !== ISA['vsetvl'].funct7) {
+        throw 'Detected OP-V vset* instruction but invalid funct7 field';
+      }
+      this.#mne = 'vsetvl';
+      const rs1 = getBits(this.#bin, FIELDS.rs1.pos);
+      const rs2 = getBits(this.#bin, FIELDS.rs2.pos);
+      const src1 = decReg(rs1), src2 = decReg(rs2);
+
+      f['opcode'].asm = f['funct3'].asm = this.#mne;
+      f['funct7'] = new Frag(FRAG.OPC, this.#mne, funct7, FIELDS.r_funct7.name);
+      f['rs1'] = new Frag(FRAG.RS1, src1, rs1, FIELDS.rs1.name);
+      f['rs2'] = new Frag(FRAG.RS2, src2, rs2, FIELDS.rs2.name);
+
+      this.asmFrags.push(f['opcode'], f['rd'], f['rs1'], f['rs2']);
+      this.binFrags.push(f['funct7'], f['rs2'], f['rs1'], f['funct3'],
+        f['rd'], f['opcode']);
+    }
   }
 
   /**
@@ -2294,6 +2387,30 @@ function decReg(reg, floatReg=false) {
 // Zfa fli.*: rs1 selects one of 32 standard floating-point constants
 function decFli(bits) {
   return FLI_STRINGS[parseInt(bits, BASE.bin)];
+}
+
+// V register: v0-v31, no ABI aliases
+function decVReg(bits) {
+  return 'v' + parseInt(bits, BASE.bin);
+}
+
+// vsetvli/vsetivli's vtypei immediate: top bits (above bit 7) must be 0
+// (reserved), then vma(7)/vta(6)/vsew(5:3)/vlmul(2:0) - returns the 4
+// canonical assembly tokens (e.g. ['e32', 'm1', 'ta', 'ma'])
+function decVtype(bits) {
+  const low8 = bits.slice(-8);
+  if (/[^0]/.test(bits.slice(0, -8))) {
+    throw 'Invalid vtype immediate: reserved bits must be 0';
+  }
+  const vma = low8[0], vta = low8[1], vsew = low8.slice(2, 5), vlmul = low8.slice(5, 8);
+  const sew = V_SEW[vsew], lmul = V_LMUL[vlmul];
+  if (sew === undefined) {
+    throw 'Invalid vtype immediate: reserved vsew value';
+  }
+  if (lmul === undefined) {
+    throw 'Invalid vtype immediate: reserved vlmul value';
+  }
+  return [sew, lmul, vta === '1' ? 'ta' : 'tu', vma === '1' ? 'ma' : 'mu'];
 }
 
 // Zcmp cm.mvsa01/cm.mva01s: 3-bit sreg field selects a restricted
