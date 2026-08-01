@@ -983,6 +983,20 @@ function enc_ssctr_system_sctrclr() {
     assertEq(inst.hex, '10400073');
 }
 
+/*
+ * Zfbfmin extension
+ */
+function enc_zfbfmin_opfp_fcvtbf16s() {
+    let inst = new Instruction('fcvt.bf16.s f3, f5');
+    assertEq(inst.hex, '4482f1d3');
+}
+
+function enc_zfbfmin_opfp_fcvtsbf16() {
+    let inst = new Instruction('fcvt.s.bf16 f6, f2');
+    assertEq(inst.hex, '40617353');
+    assertEq(inst.isa, 'Zfbfmin');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1121,6 +1135,8 @@ batchTests('Encoder Tests', [
     ['Enc - S        - SYSTEM    - sfence.vma', enc_s_system_sfencevma],
     ['Enc - Sdext    - SYSTEM    - dret', enc_sdext_system_dret],
     ['Enc - Ssctr    - SYSTEM    - sctrclr', enc_ssctr_system_sctrclr],
+    ['Enc - Zfbfmin  - OP-FP     - fcvt.bf16.s', enc_zfbfmin_opfp_fcvtbf16s],
+    ['Enc - Zfbfmin  - OP-FP     - fcvt.s.bf16', enc_zfbfmin_opfp_fcvtsbf16],
 ]);
 
 // Newline

@@ -883,6 +883,15 @@ export const ISA_Zfhmin = {
   'fcvt.h.q':  { isa: 'Zfhmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.H, rs2: '000'+FP_FMT.Q, opcode: OPCODE.OP_FP },
 }
 
+// Zfbfmin (BF16 conversion) instruction set: BF16 has no dedicated fp_fmt
+// code point, so these reuse fp_fmt=H (destination side) resp. fp_fmt=S
+// (source side) and are distinguished from the real half-precision
+// conversions purely by their (otherwise-unused) rs2 value
+export const ISA_Zfbfmin = {
+  'fcvt.bf16.s': { isa: 'Zfbfmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.H, rs2: '01000', opcode: OPCODE.OP_FP },
+  'fcvt.s.bf16': { isa: 'Zfbfmin', fmt: 'R-type', funct5: '01000', fp_fmt: FP_FMT.S, rs2: '00110', opcode: OPCODE.OP_FP },
+}
+
 // Zfa (additional floating-point) instruction set
 export const ISA_Zfa = {
   // fli.*: rs1 is not a real register - it selects one of 32 standard
@@ -1858,6 +1867,7 @@ export const ISA_OP_FP = {
       [ISA_Zfhmin['fcvt.h.q'].rs2]:   'fcvt.h.q',
       [ISA_Zfa['fround.h'].rs2]:      'fround.h',
       [ISA_Zfa['froundnx.h'].rs2]:    'froundnx.h',
+      [ISA_Zfbfmin['fcvt.bf16.s'].rs2]: 'fcvt.bf16.s',
     },
     [FP_FMT.S]: {
       [ISA_Zfhmin['fcvt.s.h'].rs2]: 'fcvt.s.h',
@@ -1865,6 +1875,7 @@ export const ISA_OP_FP = {
       [ISA_Q['fcvt.s.q'].rs2]:      'fcvt.s.q',
       [ISA_Zfa['fround.s'].rs2]:    'fround.s',
       [ISA_Zfa['froundnx.s'].rs2]:  'froundnx.s',
+      [ISA_Zfbfmin['fcvt.s.bf16'].rs2]: 'fcvt.s.bf16',
     },
     [FP_FMT.D]: {
       [ISA_Zfhmin['fcvt.d.h'].rs2]: 'fcvt.d.h',
@@ -2419,7 +2430,7 @@ export const ISA = Object.assign({},
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
-  ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfa,
+  ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfbfmin, ISA_Zfa,
   ISA_Smrnmi, ISA_Svinval, ISA_Zimop, ISA_Zicfiss, ISA_H,
   ISA_S, ISA_Sdext, ISA_Ssctr,
   ISA_Priv);
@@ -2474,6 +2485,7 @@ export const ISA_Subsets = {
   Zabha: ISA_Zabha,
   Zfh: ISA_Zfh,
   Zfhmin: ISA_Zfhmin,
+  Zfbfmin: ISA_Zfbfmin,
   Smrnmi: ISA_Smrnmi,
   Svinval: ISA_Svinval,
   Zimop: ISA_Zimop,

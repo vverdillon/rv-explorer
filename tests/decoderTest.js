@@ -826,6 +826,22 @@ function dec_ssctr_system_sctrclr() {
 }
 
 /*
+ * Zfbfmin extension
+ */
+function dec_zfbfmin_opfp_fcvtbf16s() {
+    let inst = new Instruction('4482f1d3');
+    assertEq(inst.asm, 'fcvt.bf16.s f3, f5');
+    assertEq(inst.isa, 'Zfbfmin');
+}
+
+function dec_zfbfmin_opfp_fcvtsbf16() {
+    // Distinguished from the real fcvt.h.s/fcvt.s.h conversions purely by
+    // this otherwise-unused rs2 value, not a dedicated fp_fmt code point
+    let inst = new Instruction('40617353');
+    assertEq(inst.asm, 'fcvt.s.bf16 f6, f2');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1263,6 +1279,8 @@ batchTests('Decoder Tests', [
     ['Dec - S        - SYSTEM    - sfence.vma', dec_s_system_sfencevma],
     ['Dec - Sdext    - SYSTEM    - dret', dec_sdext_system_dret],
     ['Dec - Ssctr    - SYSTEM    - sctrclr', dec_ssctr_system_sctrclr],
+    ['Dec - Zfbfmin  - OP-FP     - fcvt.bf16.s', dec_zfbfmin_opfp_fcvtbf16s],
+    ['Dec - Zfbfmin  - OP-FP     - fcvt.s.bf16', dec_zfbfmin_opfp_fcvtsbf16],
 ]);
 
 // Newline
