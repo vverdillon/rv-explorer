@@ -859,6 +859,29 @@ function enc_zcmt_c2_cmjalt() {
     assertEq(inst.bin, '1010001100100010');
 }
 
+/*
+ * Zcmp extension
+ */
+function enc_zcmp_c2_cmpush() {
+    let inst = new Instruction('cm.push {ra, s0-s3}, -32');
+    assertEq(inst.bin, '1011100010000010');
+}
+
+function enc_zcmp_c2_cmpop() {
+    let inst = new Instruction('cm.pop {ra, s0-s3}, 32');
+    assertEq(inst.bin, '1011101010000010');
+}
+
+function enc_zcmp_c2_cmpopret() {
+    let inst = new Instruction('cm.popret {ra}, 16');
+    assertEq(inst.bin, '1011111001000010');
+}
+
+function enc_zcmp_c2_cmmvsa01() {
+    let inst = new Instruction('cm.mvsa01 x9, x18');
+    assertEq(inst.bin, '1010110010101010');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -979,6 +1002,10 @@ batchTests('Encoder Tests', [
     ['Enc - Zcmop    - C1        - c.mop.1', enc_zcmop_c1_cmop1],
     ['Enc - Zcmop    - C1        - c.mop.15', enc_zcmop_c1_cmop15],
     ['Enc - Zcmt     - C2        - cm.jalt', enc_zcmt_c2_cmjalt],
+    ['Enc - Zcmp     - C2        - cm.push', enc_zcmp_c2_cmpush],
+    ['Enc - Zcmp     - C2        - cm.pop', enc_zcmp_c2_cmpop],
+    ['Enc - Zcmp     - C2        - cm.popret', enc_zcmp_c2_cmpopret],
+    ['Enc - Zcmp     - C2        - cm.mvsa01', enc_zcmp_c2_cmmvsa01],
 ]);
 
 // Newline

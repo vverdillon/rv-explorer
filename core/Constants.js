@@ -196,10 +196,22 @@ export const FIELDS = {
   // with the D extension's c.fsdsp/c.sqsp on real hardware), split by a
   // fixed 3-bit sub-selector (bits[12:10])
   c_c2_subop: { pos: [12, 3], name: 'subop' },
-  c_c2_bit9:  { pos: [9, 1],  name: 'subop2' },
+  // bits[9:8]: 1 bit for cm.jalt's index (not a selector there), or 2 fixed
+  // bits distinguishing cm.push/cm.popretz ('00') from cm.pop/cm.popret
+  // ('10') - the all-zero LSB (bit8) is otherwise reserved
+  c_c2_bit9:  { pos: [9, 2],  name: 'subop2' },
 
   // ISA_C: Zcmt cm.jalt jump-table index (bits[9:2])
   c_index: { pos: [9, 8], name: 'index' },
+
+  // ISA_C: Zcmp cm.push/cm.pop/cm.popretz/cm.popret register list and
+  // stack-adjustment fields
+  c_rlist: { pos: [7, 4], name: 'rlist' },
+  c_spimm: { pos: [3, 2], name: 'spimm' },
+
+  // ISA_C: Zcmp cm.mvsa01/cm.mva01s restricted s-register fields
+  c_sreg1: { pos: [9, 3], name: 'sreg1' },
+  c_sreg2: { pos: [4, 3], name: 'sreg2' },
 }
 
 
@@ -1023,6 +1035,19 @@ export const ISA_C = {
   // Zcmt: table-jump instruction, shares funct3='101' with Zcmp/c.fsdsp;
   // see ISA_C2_ZCMP and the disambiguation in Decoder.js/Encoder.js
   'cm.jalt': { isa: 'Zcmt', xlens: 0b111, fmt: 'CMJT-type', funct3: '101', subop: '000', opcode: C_OPCODE.C2 },
+
+  // Zcmp: push/pop a prefix of {ra, s0-s11} plus extra stack space; share
+  // funct3='101' with Zcmt/c.fsdsp (see ISA_C2_ZCMP). cm.push always shows
+  // a negative stack adjustment, the others positive (signNeg)
+  'cm.push':    { isa: 'Zcmp', xlens: 0b111, fmt: 'CMPP-type', funct3: '101', subop: '110', bit9: '00', signNeg: true, opcode: C_OPCODE.C2 },
+  'cm.pop':     { isa: 'Zcmp', xlens: 0b111, fmt: 'CMPP-type', funct3: '101', subop: '110', bit9: '10', opcode: C_OPCODE.C2 },
+  'cm.popretz': { isa: 'Zcmp', xlens: 0b111, fmt: 'CMPP-type', funct3: '101', subop: '111', bit9: '00', opcode: C_OPCODE.C2 },
+  'cm.popret':  { isa: 'Zcmp', xlens: 0b111, fmt: 'CMPP-type', funct3: '101', subop: '111', bit9: '10', opcode: C_OPCODE.C2 },
+
+  // Zcmp: move between the argument registers a0/a1 and a pair of
+  // restricted s-registers (sreg field: 0-1 -> s0-s1, 2-7 -> s2-s7)
+  'cm.mvsa01': { isa: 'Zcmp', xlens: 0b111, fmt: 'CMMV-type', funct3: '101', subop: '011', funct2: '01', opcode: C_OPCODE.C2 },
+  'cm.mva01s': { isa: 'Zcmp', xlens: 0b111, fmt: 'CMMV-type', funct3: '101', subop: '011', funct2: '11', opcode: C_OPCODE.C2 },
 }
 
 // Zcmt/Zcmp lookup: both share funct3='101' in quadrant C2 (mutually
@@ -1030,6 +1055,18 @@ export const ISA_C = {
 // by the 3-bit sub-selector at bits[12:10]
 export const ISA_C2_ZCMP = {
   [ISA_C['cm.jalt'].subop]: 'cm.jalt',
+  [ISA_C['cm.mvsa01'].subop]: {
+    [ISA_C['cm.mvsa01'].funct2]: 'cm.mvsa01',
+    [ISA_C['cm.mva01s'].funct2]: 'cm.mva01s',
+  },
+  [ISA_C['cm.push'].subop]: {
+    [ISA_C['cm.push'].bit9]: 'cm.push',
+    [ISA_C['cm.pop'].bit9]:  'cm.pop',
+  },
+  [ISA_C['cm.popretz'].subop]: {
+    [ISA_C['cm.popretz'].bit9]: 'cm.popretz',
+    [ISA_C['cm.popret'].bit9]:  'cm.popret',
+  },
 }
 
 // Zcmop lookup: c.lui's reserved nzimm=0 space, keyed by rd/rs1 field value
@@ -2294,6 +2331,8 @@ export const ISA_Subsets = {
   Zcmop: pick(ISA_C, 'c.mop.1', 'c.mop.3', 'c.mop.5', 'c.mop.7',
     'c.mop.9', 'c.mop.11', 'c.mop.13', 'c.mop.15'),
   Zcmt: pick(ISA_C, 'cm.jalt'),
+  Zcmp: pick(ISA_C, 'cm.push', 'cm.pop', 'cm.popretz', 'cm.popret', 'cm.mvsa01', 'cm.mva01s'),
+  Zcmp: pick(ISA_C, 'cm.push', 'cm.pop', 'cm.popretz', 'cm.popret', 'cm.mvsa01', 'cm.mva01s'),
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,

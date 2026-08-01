@@ -239,6 +239,12 @@ export class Decoder {
         case 'CMJT':
           this.#decodeCMJT(inst);
           break;
+        case 'CMPP':
+          this.#decodeCMPP(inst);
+          break;
+        case 'CMMV':
+          this.#decodeCMMV(inst);
+          break;
         default:
           throw `Internal error: Detected ${this.#mne} in quadrant ${quadrant} but could not match instruction format`;
       }
@@ -1290,6 +1296,14 @@ export class Decoder {
       const zcmp = ISA_C2_ZCMP[fields['c2_subop']];
       if (typeof zcmp === 'string') {
         this.#mne = zcmp;
+      } else if (typeof zcmp === 'object') {
+        // cm.mvsa01/cm.mva01s (subop='011') split by funct2 (bits[6:5]);
+        // cm.push/cm.pop and cm.popretz/cm.popret (subop='110'/'111') split
+        // by one more bit (bit9) instead - bits[6:5] there are just the
+        // middle of rlist and must not be used for dispatch
+        this.#mne = fields['c2_subop'] === '011'
+          ? zcmp[fields['funct2']]
+          : zcmp[fields['c2_bit9']];
       } else if (typeof this.#mne === 'object') {
         this.#mne = this.#mne[this.#xlens] ?? this.#mne[XLEN_MASK.all];
       }
@@ -1961,6 +1975,79 @@ export class Decoder {
     // Binary fragments from MSB to LSB
     this.binFrags.push(f['funct3'], f['subop'], f['index'], f['opcode']);
   }
+
+  /**
+   * Decodes CMPP-type instruction
+   *   (Zcmp cm.push/cm.pop/cm.popretz/cm.popret)
+   */
+  #decodeCMPP(inst) {
+    // Get fields
+    const funct3 = getBits(this.#bin, FIELDS.c_funct3.pos);
+    const subop  = getBits(this.#bin, FIELDS.c_c2_subop.pos);
+    const bit9_8 = getBits(this.#bin, FIELDS.c_c2_bit9.pos);
+    const rlist  = getBits(this.#bin, FIELDS.c_rlist.pos);
+    const spimm  = getBits(this.#bin, FIELDS.c_spimm.pos);
+
+    // Convert fields to string representations
+    const rlistVal = decImm(rlist, false);
+    if (rlistVal < 4) {
+      throw `Detected ${this.#mne} instruction, but rlist value "${rlistVal}" is reserved`;
+    }
+    const xlenBytes = this.#xlens === XLEN_MASK.rv64 ? 8
+      : this.#xlens === XLEN_MASK.rv128 ? 16 : 4;
+    const list = decRlist(rlistVal);
+    const adjustment = decStackAdj(rlistVal, spimm, xlenBytes, inst.signNeg === true);
+
+    // Create fragments
+    const f = {
+      opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.c_opcode.name),
+      funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.c_funct3.name),
+      subop:  new Frag(FRAG.OPC, this.#mne, subop, FIELDS.c_c2_subop.name),
+      bit9_8: new Frag(FRAG.OPC, this.#mne, bit9_8, FIELDS.c_c2_bit9.name),
+      rlist:  new Frag(FRAG.OPC, list, rlist, FIELDS.c_rlist.name),
+      spimm:  new Frag(FRAG.IMM, adjustment, spimm, FIELDS.c_spimm.name),
+    };
+
+    // Assembly fragments in order of instruction
+    this.asmFrags.push(f['opcode'], f['rlist'], f['spimm']);
+
+    // Binary fragments from MSB to LSB
+    this.binFrags.push(f['funct3'], f['subop'], f['bit9_8'], f['rlist'],
+      f['spimm'], f['opcode']);
+  }
+
+  /**
+   * Decodes CMMV-type instruction (Zcmp cm.mvsa01/cm.mva01s)
+   */
+  #decodeCMMV() {
+    // Get fields
+    const funct3 = getBits(this.#bin, FIELDS.c_funct3.pos);
+    const subop  = getBits(this.#bin, FIELDS.c_c2_subop.pos);
+    const sreg1  = getBits(this.#bin, FIELDS.c_sreg1.pos);
+    const funct2 = getBits(this.#bin, FIELDS.c_funct2.pos);
+    const sreg2  = getBits(this.#bin, FIELDS.c_sreg2.pos);
+
+    // Convert fields to string representations
+    const reg1 = decSreg(sreg1);
+    const reg2 = decSreg(sreg2);
+
+    // Create fragments
+    const f = {
+      opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.c_opcode.name),
+      funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.c_funct3.name),
+      subop:  new Frag(FRAG.OPC, this.#mne, subop, FIELDS.c_c2_subop.name),
+      funct2: new Frag(FRAG.OPC, this.#mne, funct2, FIELDS.c_funct2.name),
+      sreg1:  new Frag(FRAG.RS1, reg1, sreg1, FIELDS.c_sreg1.name),
+      sreg2:  new Frag(FRAG.RS2, reg2, sreg2, FIELDS.c_sreg2.name),
+    };
+
+    // Assembly fragments in order of instruction
+    this.asmFrags.push(f['opcode'], f['sreg1'], f['sreg2']);
+
+    // Binary fragments from MSB to LSB
+    this.binFrags.push(f['funct3'], f['subop'], f['sreg1'], f['funct2'],
+      f['sreg2'], f['opcode']);
+  }
 }
 
 // Extract R-types fields from instruction
@@ -2134,6 +2221,39 @@ function decReg(reg, floatReg=false) {
 // Zfa fli.*: rs1 selects one of 32 standard floating-point constants
 function decFli(bits) {
   return FLI_STRINGS[parseInt(bits, BASE.bin)];
+}
+
+// Zcmp cm.mvsa01/cm.mva01s: 3-bit sreg field selects a restricted
+// s-register - 0-1 map to s0-s1 (x8-x9), 2-7 map to s2-s7 (x18-x23)
+function decSreg(bits) {
+  const idx = parseInt(bits, BASE.bin);
+  const regNum = idx < 2 ? 8 + idx : 16 + idx;
+  return 'x' + regNum;
+}
+
+// Zcmp cm.push/cm.pop/cm.popretz/cm.popret: converts the 4-bit rlist value
+// (4-15) into the {ra[, s0[-sN]]} register-list assembly operand. rlist=15
+// is a special case covering all 12 s-registers (s0-s11), skipping the
+// otherwise-unreachable 12-register case, since s10/s11 are always saved
+// together for 16-byte stack alignment
+function decRlist(rlistVal) {
+  const n = rlistVal === 15 ? 13 : rlistVal - 3;
+  if (n === 1) {
+    return '{ra}';
+  } else if (n === 2) {
+    return '{ra, s0}';
+  }
+  return `{ra, s0-s${n - 2}}`;
+}
+
+// Zcmp: total stack adjustment in bytes for a given rlist/spimm pair -
+// the byte count needed to save rlist's registers (rounded up to 16 bytes)
+// plus spimm*16 bytes of extra stack space
+function decStackAdj(rlistVal, spimmBits, xlenBytes, negate) {
+  const n = rlistVal === 15 ? 13 : rlistVal - 3;
+  const base = Math.ceil(n * xlenBytes / 16) * 16;
+  const total = base + decImm(spimmBits, false) * 16;
+  return negate ? -total : total;
 }
 
 // Convert register numbers from binary to ABI name string

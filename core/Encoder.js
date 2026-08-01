@@ -146,6 +146,12 @@ export class Encoder {
         case 'CMJT':
           this.#encodeCMJT();
           break;
+        case 'CMPP':
+          this.#encodeCMPP();
+          break;
+        case 'CMMV':
+          this.#encodeCMMV();
+          break;
         default:
           throw `Unsupported C instruction format: ${this.#inst.fmt}`;
       }
@@ -930,6 +936,49 @@ export class Encoder {
     this.bin = this.#inst.funct3 + this.#inst.subop + encImm(index, FIELDS.c_index.pos[1]) +
       this.#inst.opcode;
   }
+
+  /**
+   * Encodes CMPP-type instruction
+   *   (Zcmp cm.push/cm.pop/cm.popretz/cm.popret)
+   */
+  #encodeCMPP() {
+    // Get operands - the register list's internal comma splits it into two
+    // tokens unless it holds a single register (just "{ra}")
+    let listStr, immediate;
+    if (this.#opr.length >= 3) {
+      listStr = this.#opr[0] + ',' + this.#opr[1];
+      immediate = this.#opr[2];
+    } else {
+      listStr = this.#opr[0];
+      immediate = this.#opr[1];
+    }
+
+    const rlist = encRlist(listStr);
+    const rlistVal = parseInt(rlist, BASE.bin);
+    const xlenBytes = this.#config.ISA === COPTS_ISA.RV64I ? 8
+      : this.#config.ISA === COPTS_ISA.RV128I ? 16 : 4;
+    const spimm = encStackAdj(rlistVal, immediate, xlenBytes, this.#inst.signNeg === true);
+
+    // Construct binary instruction
+    this.bin = this.#inst.funct3 + this.#inst.subop + this.#inst.bit9 + rlist + spimm +
+      this.#inst.opcode;
+  }
+
+  /**
+   * Encodes CMMV-type instruction (Zcmp cm.mvsa01/cm.mva01s)
+   */
+  #encodeCMMV() {
+    // Get operands
+    const reg1 = this.#opr[0], reg2 = this.#opr[1];
+
+    // Encode operands
+    const sreg1 = encSreg(reg1);
+    const sreg2 = encSreg(reg2);
+
+    // Construct binary instruction
+    this.bin = this.#inst.funct3 + this.#inst.subop + sreg1 + this.#inst.funct2 + sreg2 +
+      this.#inst.opcode;
+  }
 }
 
 // Parse given immediate to binary
@@ -1001,6 +1050,69 @@ function encFli(value) {
     throw `Invalid fli constant: "${value}"`;
   }
   return convertBase(idx, BASE.dec, BASE.bin, 5);
+}
+
+// Zcmp cm.mvsa01/cm.mva01s: encodes a restricted s-register (s0-s1 or
+// s2-s7) into the 3-bit sreg field
+function encSreg(regName) {
+  const reg = REGISTER[regName] ?? regName;
+  const match = /^x(\d+)$/.exec(reg);
+  if (match === null) {
+    throw `Invalid or unknown register format: "${regName}"`;
+  }
+  const regNum = parseInt(match[1]);
+  let idx;
+  if (regNum === 8 || regNum === 9) {
+    idx = regNum - 8;
+  } else if (regNum >= 18 && regNum <= 23) {
+    idx = regNum - 16;
+  } else {
+    throw `Invalid register for sreg field: "${regName}" (expected s0, s1, or s2-s7)`;
+  }
+  return convertBase(idx, BASE.dec, BASE.bin, 3);
+}
+
+// Zcmp cm.push/cm.pop/cm.popretz/cm.popret: encodes the {ra[, s0[-sN]]}
+// register-list operand into the 4-bit rlist value (see decRlist in
+// Decoder.js for the reverse mapping and the rlist=15 special case)
+function encRlist(str) {
+  const m = /^\{ra(?:,\s*s0(?:-s(\d+))?)?\}$/.exec(str.trim());
+  if (m === null) {
+    throw `Invalid register list: "${str}"`;
+  }
+  let n;
+  if (m[1] !== undefined) {
+    n = parseInt(m[1]) + 2;
+  } else if (str.includes('s0')) {
+    n = 2;
+  } else {
+    n = 1;
+  }
+  if (n === 13) {
+    return '1111';
+  }
+  if (n < 1 || n > 11) {
+    throw `Invalid register list: "${str}" (unsupported register count)`;
+  }
+  return convertBase(n + 3, BASE.dec, BASE.bin, 4);
+}
+
+// Zcmp: derives the 2-bit spimm value from the requested total stack
+// adjustment, the register list's own byte requirement, and XLEN
+function encStackAdj(rlistVal, immediate, xlenBytes, expectNeg) {
+  const val = Number(immediate);
+  if (expectNeg ? val > 0 : val < 0) {
+    throw `Invalid immediate "${immediate}", expected ${expectNeg ? 'non-positive' : 'non-negative'} value`;
+  }
+
+  const n = rlistVal === 15 ? 13 : rlistVal - 3;
+  const base = Math.ceil(n * xlenBytes / 16) * 16;
+  const spimmVal = (Math.abs(val) - base) / 16;
+  if (!Number.isInteger(spimmVal) || spimmVal < 0 || spimmVal > 3) {
+    const opts = [0, 1, 2, 3].map(s => base + s * 16).join(', ');
+    throw `Invalid immediate "${immediate}" for this register list (expected one of: ${opts})`;
+  }
+  return convertBase(spimmVal, BASE.dec, BASE.bin, 2);
 }
 
 // Convert compressed register numbers to binary

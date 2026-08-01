@@ -678,6 +678,32 @@ function dec_zcmt_c2_cmjalt() {
 }
 
 /*
+ * Zcmp extension
+ */
+function dec_zcmp_c2_cmpush() {
+    // Previously misdispatched as cm.pop: rlist/spimm bits happen to
+    // collide with cm.mvsa01/cm.mva01s's funct2, so dispatch must key off
+    // subop+bit9 rather than trying funct2 unconditionally first
+    let inst = new Instruction('1011100010000010');
+    assertEq(inst.asm, 'cm.push {ra, s0-s3}, -32');
+}
+
+function dec_zcmp_c2_cmpop() {
+    let inst = new Instruction('1011101010000010');
+    assertEq(inst.asm, 'cm.pop {ra, s0-s3}, 32');
+}
+
+function dec_zcmp_c2_cmpopret() {
+    let inst = new Instruction('1011111001000010');
+    assertEq(inst.asm, 'cm.popret {ra}, 16');
+}
+
+function dec_zcmp_c2_cmmvsa01() {
+    let inst = new Instruction('1010110010101010');
+    assertEq(inst.asm, 'cm.mvsa01 x9, x18');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1094,6 +1120,10 @@ batchTests('Decoder Tests', [
     ['Dec - Zcmop    - C1        - c.mop.1', dec_zcmop_c1_cmop1],
     ['Dec - Zcmop    - C1        - c.mop.15', dec_zcmop_c1_cmop15],
     ['Dec - Zcmt     - C2        - cm.jalt', dec_zcmt_c2_cmjalt],
+    ['Dec - Zcmp     - C2        - cm.push', dec_zcmp_c2_cmpush],
+    ['Dec - Zcmp     - C2        - cm.pop', dec_zcmp_c2_cmpop],
+    ['Dec - Zcmp     - C2        - cm.popret', dec_zcmp_c2_cmpopret],
+    ['Dec - Zcmp     - C2        - cm.mvsa01', dec_zcmp_c2_cmmvsa01],
 ]);
 
 // Newline
