@@ -642,6 +642,15 @@ export const ISA_Zacas = {
   'amocas.q': { isa: 'RV64Zacas', fmt: 'R-type', funct5: '00101', funct3: '100', opcode: OPCODE.AMO },
 }
 
+// Zicfiss (shadow stack) instruction set
+//   sspush/sspopchk/ssrdp are pseudo-ops of mop.r.28/mop.rr.7 with specific
+//   fixed registers (x1/x5) and are not implemented, since this tool has no
+//   pseudo-op rendering layer (same reasoning as Zicntr/Zihintntl/lpad)
+export const ISA_Zicfiss = {
+  'ssamoswap.w': { isa: 'Zicfiss',   fmt: 'R-type', funct5: '01001', funct3: '010', opcode: OPCODE.AMO },
+  'ssamoswap.d': { isa: 'RV64Zicfiss', fmt: 'R-type', funct5: '01001', funct3: '011', opcode: OPCODE.AMO },
+}
+
 // Zabha (byte and halfword atomic memory operations) instruction set
 export const ISA_Zabha = {
   'amoswap.b': { isa: 'Zabha', fmt: 'R-type', funct5: '00001', funct3: '000', opcode: OPCODE.AMO },
@@ -1500,6 +1509,10 @@ export const ISA_AMO = {
   [ISA_Zacas['amocas.d'].funct5 + ISA_Zacas['amocas.d'].funct3]: 'amocas.d',
   [ISA_Zacas['amocas.q'].funct5 + ISA_Zacas['amocas.q'].funct3]: 'amocas.q',
 
+  // Zicfiss
+  [ISA_Zicfiss['ssamoswap.w'].funct5 + ISA_Zicfiss['ssamoswap.w'].funct3]: 'ssamoswap.w',
+  [ISA_Zicfiss['ssamoswap.d'].funct5 + ISA_Zicfiss['ssamoswap.d'].funct3]: 'ssamoswap.d',
+
   // Zabha
   [ISA_Zabha['amoswap.b'].funct5 + ISA_Zabha['amoswap.b'].funct3]: 'amoswap.b',
   [ISA_Zabha['amoadd.b'].funct5  + ISA_Zabha['amoadd.b'].funct3]:  'amoadd.b',
@@ -2354,7 +2367,7 @@ export const ISA = Object.assign({},
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfa,
-  ISA_Smrnmi, ISA_Svinval, ISA_Zimop,
+  ISA_Smrnmi, ISA_Svinval, ISA_Zimop, ISA_Zicfiss,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -2410,5 +2423,6 @@ export const ISA_Subsets = {
   Smrnmi: ISA_Smrnmi,
   Svinval: ISA_Svinval,
   Zimop: ISA_Zimop,
+  Zicfiss: ISA_Zicfiss,
   Priv: ISA_Priv
 }

@@ -924,6 +924,22 @@ function enc_zimop_system_moprr0() {
     assertEq(inst.hex, '827342f3');
 }
 
+/*
+ * Zicfiss extension
+ */
+function enc_zicfiss_amo_ssamoswapw() {
+    let inst = new Instruction('ssamoswap.w x6, x5, (x10)');
+    let instAbi = new Instruction('ssamoswap.w t1, t0, (a0)');
+    assertEq(inst.hex, '4855232f');
+    assertEq(instAbi.hex, inst.hex);
+}
+
+function enc_zicfiss_amo_ssamoswapd() {
+    let inst = new Instruction('ssamoswap.d x6, x5, (x10)');
+    assertEq(inst.hex, '4855332f');
+    assertEq(inst.isa, 'RV64Zicfiss');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1054,6 +1070,8 @@ batchTests('Encoder Tests', [
     ['Enc - Svinval  - SYSTEM    - hinval.gvma', enc_svinval_system_hinvalgvma],
     ['Enc - Zimop    - SYSTEM    - mop.r.17', enc_zimop_system_mopr17],
     ['Enc - Zimop    - SYSTEM    - mop.rr.0', enc_zimop_system_moprr0],
+    ['Enc - Zicfiss  - AMO       - ssamoswap.w', enc_zicfiss_amo_ssamoswapw],
+    ['Enc - Zicfiss  - AMO       - ssamoswap.d', enc_zicfiss_amo_ssamoswapd],
 ]);
 
 // Newline

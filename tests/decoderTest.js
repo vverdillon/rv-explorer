@@ -753,6 +753,22 @@ function dec_zimop_system_moprr7() {
 }
 
 /*
+ * Zicfiss extension
+ */
+function dec_zicfiss_amo_ssamoswapw() {
+    let inst = new Instruction('4855232f');
+    let instAbi = new Instruction('4855232f', { ABI:true });
+    assertEq(inst.asm, 'ssamoswap.w x6, x5, (x10)');
+    assertEq(instAbi.asm, 'ssamoswap.w t1, t0, (a0)');
+}
+
+function dec_zicfiss_amo_ssamoswapd() {
+    let inst = new Instruction('4855332f', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'ssamoswap.d x6, x5, (x10)');
+    assertEq(inst.isa, 'RV64Zicfiss');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1180,6 +1196,8 @@ batchTests('Decoder Tests', [
     ['Dec - Zimop    - SYSTEM    - mop.r.0', dec_zimop_system_mopr0],
     ['Dec - Zimop    - SYSTEM    - mop.r.31', dec_zimop_system_mopr31],
     ['Dec - Zimop    - SYSTEM    - mop.rr.7', dec_zimop_system_moprr7],
+    ['Dec - Zicfiss  - AMO       - ssamoswap.w', dec_zicfiss_amo_ssamoswapw],
+    ['Dec - Zicfiss  - AMO       - ssamoswap.d', dec_zicfiss_amo_ssamoswapd],
 ]);
 
 // Newline
