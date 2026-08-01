@@ -1091,6 +1091,12 @@ export const ISA_Priv = {
   wfi: { isa: 'Priv', fmt: 'I-type', funct12: '000100000101', funct3: '000', opcode: OPCODE.SYSTEM },
 }
 
+// Smrnmi (resumable non-maskable interrupts) instruction set
+export const ISA_Smrnmi = {
+  mnret: { isa: 'Smrnmi', fmt: 'I-type', funct12: '011100000010', funct3: '000', opcode: OPCODE.SYSTEM },
+}
+
+
 // ISA per opcode
 export const ISA_OP = {
   // RV32I
@@ -1381,6 +1387,7 @@ export const ISA_SYSTEM = {
     [ISA_Priv['wfi'].funct12]:      'wfi',
     [ISA_Zawrs['wrs.nto'].funct12]: 'wrs.nto',
     [ISA_Zawrs['wrs.sto'].funct12]: 'wrs.sto',
+    [ISA_Smrnmi['mnret'].funct12]:  'mnret',
   },
   [ISA_Zicsr['csrrw'].funct3]:  'csrrw',
   [ISA_Zicsr['csrrs'].funct3]:  'csrrs',
@@ -2286,6 +2293,7 @@ export const ISA = Object.assign({},
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfa,
+  ISA_Smrnmi,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -2332,12 +2340,12 @@ export const ISA_Subsets = {
     'c.mop.9', 'c.mop.11', 'c.mop.13', 'c.mop.15'),
   Zcmt: pick(ISA_C, 'cm.jalt'),
   Zcmp: pick(ISA_C, 'cm.push', 'cm.pop', 'cm.popretz', 'cm.popret', 'cm.mvsa01', 'cm.mva01s'),
-  Zcmp: pick(ISA_C, 'cm.push', 'cm.pop', 'cm.popretz', 'cm.popret', 'cm.mvsa01', 'cm.mva01s'),
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,
   Zabha: ISA_Zabha,
   Zfh: ISA_Zfh,
   Zfhmin: ISA_Zfhmin,
+  Smrnmi: ISA_Smrnmi,
   Priv: ISA_Priv
 }

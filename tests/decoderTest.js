@@ -704,6 +704,15 @@ function dec_zcmp_c2_cmmvsa01() {
 }
 
 /*
+ * Smrnmi extension
+ */
+function dec_smrnmi_system_mnret() {
+    let inst = new Instruction('70200073');
+    assertEq(inst.asm, 'mnret');
+    assertEq(inst.isa, 'Smrnmi');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1124,6 +1133,7 @@ batchTests('Decoder Tests', [
     ['Dec - Zcmp     - C2        - cm.pop', dec_zcmp_c2_cmpop],
     ['Dec - Zcmp     - C2        - cm.popret', dec_zcmp_c2_cmpopret],
     ['Dec - Zcmp     - C2        - cm.mvsa01', dec_zcmp_c2_cmmvsa01],
+    ['Dec - Smrnmi   - SYSTEM    - mnret', dec_smrnmi_system_mnret],
 ]);
 
 // Newline

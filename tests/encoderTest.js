@@ -882,6 +882,14 @@ function enc_zcmp_c2_cmmvsa01() {
     assertEq(inst.bin, '1010110010101010');
 }
 
+/*
+ * Smrnmi extension
+ */
+function enc_smrnmi_system_mnret() {
+    let inst = new Instruction('mnret');
+    assertEq(inst.hex, '70200073');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1006,6 +1014,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zcmp     - C2        - cm.pop', enc_zcmp_c2_cmpop],
     ['Enc - Zcmp     - C2        - cm.popret', enc_zcmp_c2_cmpopret],
     ['Enc - Zcmp     - C2        - cm.mvsa01', enc_zcmp_c2_cmmvsa01],
+    ['Enc - Smrnmi   - SYSTEM    - mnret', enc_smrnmi_system_mnret],
 ]);
 
 // Newline
