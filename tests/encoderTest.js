@@ -802,6 +802,42 @@ function enc_zfa_opfp_fmvhxd() {
     assertEq(inst.isa, 'RV32Zfa');
 }
 
+/*
+ * Zcb extension
+ */
+function enc_zcb_c0_clbu() {
+    let inst = new Instruction('c.lbu x9, 3(x8)');
+    let instAbi = new Instruction('c.lbu s1, 3(s0)');
+    assertEq(inst.bin, '1000000001100100');
+    assertEq(instAbi.bin, inst.bin);
+}
+
+function enc_zcb_c0_clh() {
+    let inst = new Instruction('c.lh x10, 0(x11)');
+    assertEq(inst.bin, '1000010111001000');
+}
+
+function enc_zcb_c0_csb() {
+    let inst = new Instruction('c.sb x12, 1(x13)');
+    assertEq(inst.bin, '1000101010110000');
+}
+
+function enc_zcb_c1_czextw() {
+    let inst = new Instruction('c.zext.w x11');
+    assertEq(inst.bin, '1001110111110001');
+    assertEq(inst.isa, 'RV64Zcb');
+}
+
+function enc_zcb_c1_cnot() {
+    let inst = new Instruction('c.not x14');
+    assertEq(inst.bin, '1001111101110101');
+}
+
+function enc_zcb_c1_cmul() {
+    let inst = new Instruction('c.mul x15, x8');
+    assertEq(inst.bin, '1001111111000001');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -913,6 +949,12 @@ batchTests('Encoder Tests', [
     ['Enc - Zfa      - OP-FP     - fmaxm.d', enc_zfa_opfp_fmaxmd],
     ['Enc - Zfa      - OP-FP     - froundnx.s', enc_zfa_opfp_froundnxs],
     ['Enc - Zfa      - OP-FP     - fmvh.x.d', enc_zfa_opfp_fmvhxd],
+    ['Enc - Zcb      - C0        - c.lbu', enc_zcb_c0_clbu],
+    ['Enc - Zcb      - C0        - c.lh', enc_zcb_c0_clh],
+    ['Enc - Zcb      - C0        - c.sb', enc_zcb_c0_csb],
+    ['Enc - Zcb      - C1        - c.zext.w', enc_zcb_c1_czextw],
+    ['Enc - Zcb      - C1        - c.not', enc_zcb_c1_cnot],
+    ['Enc - Zcb      - C1        - c.mul', enc_zcb_c1_cmul],
 ]);
 
 // Newline

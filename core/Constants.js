@@ -179,6 +179,18 @@ export const FIELDS = {
   c_imm_cj:     { pos: [12, 11], name: 'imm' },
   c_shamt_0:    { pos: [12, 1],  name: 'shamt' },
   c_shamt_1:    { pos: [6, 5],   name: 'shamt' },
+
+  // ISA_C: Zcb byte/halfword loads and stores - share funct3='100' with a
+  // 3-bit sub-selector (bits[12:10]), sometimes further split by bit 6
+  c_zcb_subop:  { pos: [12, 3], name: 'subop' },
+  c_zcb_subop2: { pos: [6, 1],  name: 'subop2' },
+  c_zcb_uimm2:  { pos: [6, 2],  name: 'uimm[1:0]' },
+  c_zcb_uimm1:  { pos: [5, 1],  name: 'uimm[1]' },
+
+  // ISA_C: Zcb single-operand pseudo-CA instructions (c.zext.b/h/w,
+  // c.sext.b/h, c.not) - the rs2' position is repurposed as a fixed
+  // 3-bit sub-opcode selector rather than a register
+  c_zcb_subfunct3: { pos: [4, 3], name: 'subfunct3' },
 }
 
 
@@ -921,6 +933,15 @@ export const ISA_C = {
   'c.fsw':    { isa: 'FC', xlens: 0b001, fmt: 'CS-type', funct3: '111', uimm: true, immBits: [[[5,3]],   [2,6]],   opcode: C_OPCODE.C0 },
   'c.fsd':    { isa: 'DC', xlens: 0b011, fmt: 'CS-type', funct3: '101', uimm: true, immBits: [[[5,3]],   [[7,6]]], opcode: C_OPCODE.C0 },
 
+  // Zcb byte/halfword loads and stores - share funct3='100' with a 3-bit
+  // sub-selector (subop); c.lhu/c.lh/c.sh further share their subop value,
+  // disambiguated by a single extra bit (subop2)
+  'c.lbu': { isa: 'Zcb', xlens: 0b111, fmt: 'CL-type', funct3: '100', subop: '000', uimm: true, opcode: C_OPCODE.C0 },
+  'c.lhu': { isa: 'Zcb', xlens: 0b111, fmt: 'CL-type', funct3: '100', subop: '001', subop2: '0', uimm: true, opcode: C_OPCODE.C0 },
+  'c.lh':  { isa: 'Zcb', xlens: 0b111, fmt: 'CL-type', funct3: '100', subop: '001', subop2: '1', uimm: true, opcode: C_OPCODE.C0 },
+  'c.sb':  { isa: 'Zcb', xlens: 0b111, fmt: 'CS-type', funct3: '100', subop: '010', uimm: true, opcode: C_OPCODE.C0 },
+  'c.sh':  { isa: 'Zcb', xlens: 0b111, fmt: 'CS-type', funct3: '100', subop: '011', subop2: '0', uimm: true, opcode: C_OPCODE.C0 },
+
 // Control Transfer Instructions
   'c.j':      { isa: 'C', xlens: 0b101, fmt: 'CJ-type', funct3: '101', immBits: [11,4,[9,8],10,6,7,[3,1],5], opcode: C_OPCODE.C1 },
   'c.jal':    { isa: 'C', xlens: 0b001, fmt: 'CJ-type', funct3: '001', immBits: [11,4,[9,8],10,6,7,[3,1],5], opcode: C_OPCODE.C1 },
@@ -961,6 +982,16 @@ export const ISA_C = {
   'c.sub':    { isa: 'C', xlens: 0b111, fmt: 'CA-type', funct6: '100011', funct2: '00', opcode: C_OPCODE.C1 },
   'c.subw':   { isa: 'C', xlens: 0b110, fmt: 'CA-type', funct6: '100111', funct2: '00', opcode: C_OPCODE.C1 },
   'c.addw':   { isa: 'C', xlens: 0b110, fmt: 'CA-type', funct6: '100111', funct2: '01', opcode: C_OPCODE.C1 },
+
+  'c.mul':     { isa: 'Zcb', xlens: 0b111, fmt: 'CA-type', funct6: '100111', funct2: '10', opcode: C_OPCODE.C1 },
+  // Single-operand pseudo-CA instructions: rs2' bits are a fixed 3-bit
+  // sub-opcode (subfunct3) rather than a register
+  'c.zext.b':  { isa: 'Zcb',     xlens: 0b111, fmt: 'CA-type', funct6: '100111', funct2: '11', subfunct3: '000', opcode: C_OPCODE.C1 },
+  'c.sext.b':  { isa: 'Zcb',     xlens: 0b111, fmt: 'CA-type', funct6: '100111', funct2: '11', subfunct3: '001', opcode: C_OPCODE.C1 },
+  'c.zext.h':  { isa: 'Zcb',     xlens: 0b111, fmt: 'CA-type', funct6: '100111', funct2: '11', subfunct3: '010', opcode: C_OPCODE.C1 },
+  'c.sext.h':  { isa: 'Zcb',     xlens: 0b111, fmt: 'CA-type', funct6: '100111', funct2: '11', subfunct3: '011', opcode: C_OPCODE.C1 },
+  'c.zext.w':  { isa: 'Zcb', xlens: 0b110, fmt: 'CA-type', funct6: '100111', funct2: '11', subfunct3: '100', opcode: C_OPCODE.C1 },
+  'c.not':     { isa: 'Zcb',     xlens: 0b111, fmt: 'CA-type', funct6: '100111', funct2: '11', subfunct3: '101', opcode: C_OPCODE.C1 },
 
 // Other Instructions
   'c.nop':    { isa: 'C', xlens: 0b111, fmt: 'CI-type', funct3: '000', rdRs1Mask: 0b00, rdRs1Val: 0, immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
@@ -1661,6 +1692,20 @@ export const ISA_C0 = {
   [ISA_C['c.fsd'].funct3]:  xlenLookupGen('c.fsd', 'c.sq'),
   [ISA_C['c.sw'].funct3]:   'c.sw',
   [ISA_C['c.fsw'].funct3]:  xlenLookupGen('c.fsw', 'c.sd'),
+  // Zcb: this funct3 is repurposed as a 3-bit sub-selector (subop) instead
+  // of the usual xlen dispatch; c.lhu/c.lh/c.sh share a subop value and are
+  // further split by a single extra bit (subop2)
+  [ISA_C['c.lbu'].funct3]: {
+    [ISA_C['c.lbu'].subop]: 'c.lbu',
+    [ISA_C['c.lhu'].subop]: {
+      [ISA_C['c.lhu'].subop2]: 'c.lhu',
+      [ISA_C['c.lh'].subop2]:  'c.lh',
+    },
+    [ISA_C['c.sb'].subop]: 'c.sb',
+    [ISA_C['c.sh'].subop]: {
+      [ISA_C['c.sh'].subop2]: 'c.sh',
+    },
+  },
 }
 
 // C1 Instruction order of lookup
@@ -1691,6 +1736,17 @@ export const ISA_C1 = {
       [ISA_C['c.and'].funct6[3] +ISA_C['c.and'].funct2]:  'c.and',
       [ISA_C['c.subw'].funct6[3]+ISA_C['c.subw'].funct2]: 'c.subw',
       [ISA_C['c.addw'].funct6[3]+ISA_C['c.addw'].funct2]: 'c.addw',
+      [ISA_C['c.mul'].funct6[3]+ISA_C['c.mul'].funct2]:   'c.mul',
+      // Zcb single-operand pseudo-CA instructions, further split by the
+      // fixed 3-bit sub-opcode occupying the rs2' position (subfunct3)
+      [ISA_C['c.zext.b'].funct6[3]+ISA_C['c.zext.b'].funct2]: {
+        [ISA_C['c.zext.b'].subfunct3]: 'c.zext.b',
+        [ISA_C['c.sext.b'].subfunct3]: 'c.sext.b',
+        [ISA_C['c.zext.h'].subfunct3]: 'c.zext.h',
+        [ISA_C['c.sext.h'].subfunct3]: 'c.sext.h',
+        [ISA_C['c.zext.w'].subfunct3]: 'c.zext.w',
+        [ISA_C['c.not'].subfunct3]:    'c.not',
+      },
     }
   }}},
   [ISA_C['c.j'].funct3]:        'c.j',
@@ -2188,6 +2244,8 @@ export const ISA_Subsets = {
   Zk:  ISA_Zk,
   Zicbo: ISA_Zicbo,
   Zfa: ISA_Zfa,
+  Zcb: pick(ISA_C, 'c.lbu', 'c.lhu', 'c.lh', 'c.sb', 'c.sh',
+    'c.zext.b', 'c.sext.b', 'c.zext.h', 'c.sext.h', 'c.zext.w', 'c.not', 'c.mul'),
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,

@@ -749,6 +749,10 @@ export class Encoder {
    * Encodes CL-type instruction
    */
   #encodeCL() {
+    if (this.#inst.subop !== undefined) {
+      return this.#encodeZcbMem();
+    }
+
     // Get operands
     const dest = this.#opr[0], offset = this.#opr[1], base = this.#opr[2];
 
@@ -777,6 +781,10 @@ export class Encoder {
    * Encodes CS-type instruction
    */
   #encodeCS() {
+    if (this.#inst.subop !== undefined) {
+      return this.#encodeZcbMem();
+    }
+
     // Get operands
     const src = this.#opr[0], immediate = this.#opr[1], base = this.#opr[2];
 
@@ -802,6 +810,43 @@ export class Encoder {
   }
 
   /**
+   * Encodes Zcb byte/halfword loads (c.lbu/c.lhu/c.lh) and stores
+   * (c.sb/c.sh)
+   */
+  #encodeZcbMem() {
+    // Get operands
+    const reg = this.#opr[0], offset = this.#opr[1], base = this.#opr[2];
+
+    // Encode operands and parse immediate for validation
+    const regPrime = encRegPrime(reg);
+    const rs1Prime = encRegPrime(base);
+    const immVal = Number(offset);
+
+    if (immVal < 0) {
+      throw `Invalid immediate "${offset}", ${this.#mne} instruction expects non-negative value`;
+    }
+
+    let uimm;
+    if (this.#inst.subop2 !== undefined) {
+      // Halfword offset: 0 or 2 (2-byte aligned)
+      if (immVal !== 0 && immVal !== 2) {
+        throw `Invalid immediate "${offset}", ${this.#mne} instruction expects 0 or 2`;
+      }
+      uimm = this.#inst.subop2 + encImm(immVal / 2, 1);
+    } else {
+      // Byte offset: 0-3
+      if (immVal > 3) {
+        throw `Invalid immediate "${offset}", ${this.#mne} instruction expects 0-3`;
+      }
+      uimm = encImm(immVal, 2);
+    }
+
+    // Construct binary instruction
+    this.bin = this.#inst.funct3 + this.#inst.subop + rs1Prime + uimm + regPrime +
+      this.#inst.opcode;
+  }
+
+  /**
    * Encodes CA-type instruction
    */
   #encodeCA() {
@@ -810,7 +855,9 @@ export class Encoder {
 
     // Encode operands and parse immediate for validation
     const rdRs1Prime = encRegPrime(destSrc1);
-    const rs2Prime = encRegPrime(src2);
+    // Zcb single-operand instructions (c.zext.b/h/w, c.sext.b/h, c.not):
+    // rs2' bits are a fixed sub-opcode selector, not a register
+    const rs2Prime = this.#inst.subfunct3 ?? encRegPrime(src2);
 
     // Construct binary instruction
     this.bin = this.#inst.funct6 + rdRs1Prime + this.#inst.funct2 + rs2Prime + this.#inst.opcode;

@@ -620,6 +620,43 @@ function dec_zba_opimm32_slliuw() {
 }
 
 /*
+ * Zcb extension
+ */
+function dec_zcb_c0_clbu() {
+    let inst = new Instruction('1000000001100100');
+    let instAbi = new Instruction('1000000001100100', { ABI:true });
+    assertEq(inst.asm, 'c.lbu x9, 3(x8)');
+    assertEq(instAbi.asm, 'c.lbu s1, 3(s0)');
+}
+
+function dec_zcb_c0_clh() {
+    // c.lh shares its subop with c.lhu, disambiguated by subop2 (bit 6)
+    let inst = new Instruction('1000010111001000');
+    assertEq(inst.asm, 'c.lh x10, 0(x11)');
+}
+
+function dec_zcb_c0_csb() {
+    let inst = new Instruction('1000101010110000');
+    assertEq(inst.asm, 'c.sb x12, 1(x13)');
+}
+
+function dec_zcb_c1_czextw() {
+    let inst = new Instruction('1001110111110001', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'c.zext.w x11');
+    assertEq(inst.isa, 'RV64Zcb');
+}
+
+function dec_zcb_c1_cnot() {
+    let inst = new Instruction('1001111101110101');
+    assertEq(inst.asm, 'c.not x14');
+}
+
+function dec_zcb_c1_cmul() {
+    let inst = new Instruction('1001111111000001');
+    assertEq(inst.asm, 'c.mul x15, x8');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1027,6 +1064,12 @@ batchTests('Decoder Tests', [
     ['Dec - Zfa      - OP-FP     - fminm.s', dec_zfa_opfp_fminms],
     ['Dec - Zfa      - OP-FP     - fleq.s', dec_zfa_opfp_fleqs],
     ['Dec - Zfa      - OP-FP     - fcvtmod.w.d', dec_zfa_opfp_fcvtmodwd],
+    ['Dec - Zcb      - C0        - c.lbu', dec_zcb_c0_clbu],
+    ['Dec - Zcb      - C0        - c.lh', dec_zcb_c0_clh],
+    ['Dec - Zcb      - C0        - c.sb', dec_zcb_c0_csb],
+    ['Dec - Zcb      - C1        - c.zext.w', dec_zcb_c1_czextw],
+    ['Dec - Zcb      - C1        - c.not', dec_zcb_c1_cnot],
+    ['Dec - Zcb      - C1        - c.mul', dec_zcb_c1_cmul],
 ]);
 
 // Newline

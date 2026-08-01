@@ -1206,7 +1206,15 @@ export class Decoder {
     // - funct3
     // - xlen
     this.#mne = ISA_C0[fields['funct3']];
-    if (typeof this.#mne === 'object') {
+    if (fields['funct3'] === '100') {
+      // Zcb byte/halfword loads and stores: this funct3 was unused in base
+      // C, so it's repurposed as a 3-bit sub-selector (subop) instead of
+      // the usual xlen dispatch; c.lhu/c.lh/c.sh need one more bit (subop2)
+      this.#mne = this.#mne[fields['zcb_subop']];
+      if (typeof this.#mne === 'object') {
+        this.#mne = this.#mne[fields['zcb_subop2']];
+      }
+    } else if (typeof this.#mne === 'object') {
       this.#mne = this.#mne[this.#xlens] ?? this.#mne[XLEN_MASK.all];
     }
 
@@ -1237,6 +1245,11 @@ export class Decoder {
           this.#mne = this.#mne[fields['funct2_cb']];
           if (typeof this.#mne === 'object') {
             this.#mne = this.#mne[fields['funct6'][3] + fields['funct2']];
+            if (typeof this.#mne === 'object') {
+              // Zcb single-operand pseudo-CA instructions: one more level,
+              // keyed by the fixed sub-opcode occupying the rs2' position
+              this.#mne = this.#mne[fields['zcb_subfunct3']];
+            }
           }
         }
       }
@@ -1563,6 +1576,10 @@ export class Decoder {
    * Decodes CL-type instruction
    */
   #decodeCL(inst) {
+    if (inst.subop !== undefined) {
+      return this.#decodeZcbMem(inst, false);
+    }
+
     // Get fields
     const funct3   = getBits(this.#bin, FIELDS.c_funct3.pos);
     const imm0     = getBits(this.#bin, FIELDS.c_imm_cl_0.pos);
@@ -1612,6 +1629,10 @@ export class Decoder {
    * Decodes CS-type instruction
    */
   #decodeCS(inst) {
+    if (inst.subop !== undefined) {
+      return this.#decodeZcbMem(inst, true);
+    }
+
     // Get fields
     const funct3   = getBits(this.#bin, FIELDS.c_funct3.pos);
     const imm0     = getBits(this.#bin, FIELDS.c_imm_cl_0.pos);
@@ -1658,9 +1679,70 @@ export class Decoder {
   }
 
   /**
+   * Decodes Zcb byte/halfword loads (c.lbu/c.lhu/c.lh) and stores (c.sb/c.sh)
+   *   These reuse the CL/CS-type register layout, but their funct3 is
+   *   entirely repurposed: a fixed 3-bit subop selector plus, for
+   *   halfwords, a fixed discriminator bit (subop2) alongside a
+   *   correspondingly narrower immediate (2-bit byte offset, or 1-bit
+   *   halfword offset)
+   */
+  #decodeZcbMem(inst, isStore) {
+    // Get fields
+    const funct3   = getBits(this.#bin, FIELDS.c_funct3.pos);
+    const subop    = getBits(this.#bin, FIELDS.c_zcb_subop.pos);
+    const rs1Prime = getBits(this.#bin, FIELDS.c_rs1_prime.pos);
+    const regPrime = getBits(this.#bin,
+      isStore ? FIELDS.c_rs2_prime.pos : FIELDS.c_rd_prime.pos);
+
+    // Prepend bits to compressed register fields
+    const rs1 = '01' + rs1Prime;
+    const reg = '01' + regPrime;
+
+    // Convert fields to string representations
+    const base = decReg(rs1);
+    const val  = decReg(reg, /^c\.f/.test(this.#mne));
+
+    const f = {
+      opcode:    new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.c_opcode.name),
+      funct3:    new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.c_funct3.name),
+      subop:     new Frag(FRAG.OPC, this.#mne, subop, FIELDS.c_zcb_subop.name),
+      rs1_prime: new Frag(FRAG.RS1, base, rs1Prime, FIELDS.c_rs1_prime.name, true),
+      reg_prime: new Frag(isStore ? FRAG.RS2 : FRAG.RD, val, regPrime,
+        isStore ? FIELDS.c_rs2_prime.name : FIELDS.c_rd_prime.name),
+    };
+
+    if (inst.subop2 !== undefined) {
+      // c.lhu/c.lh/c.sh: bit 6 is a fixed discriminator (subop2), leaving
+      // only bit 5 as the immediate (uimm[1]; halfword access is 2-byte
+      // aligned so uimm[0] is implicitly 0)
+      const subop2 = getBits(this.#bin, FIELDS.c_zcb_subop2.pos);
+      const uimmBits = getBits(this.#bin, FIELDS.c_zcb_uimm1.pos);
+      const offset = decImm(uimmBits, false) * 2;
+
+      f['subop2'] = new Frag(FRAG.OPC, this.#mne, subop2, FIELDS.c_zcb_subop2.name);
+      f['uimm']   = new Frag(FRAG.IMM, offset, uimmBits, FIELDS.c_zcb_uimm1.name);
+
+      this.asmFrags.push(f['opcode'], f['reg_prime'], f['uimm'], f['rs1_prime']);
+      this.binFrags.push(f['funct3'], f['subop'], f['rs1_prime'], f['subop2'],
+        f['uimm'], f['reg_prime'], f['opcode']);
+      return;
+    }
+
+    // c.lbu/c.sb: full 2-bit byte offset (uimm[1:0])
+    const uimmBits = getBits(this.#bin, FIELDS.c_zcb_uimm2.pos);
+    const offset = decImm(uimmBits, false);
+
+    f['uimm'] = new Frag(FRAG.IMM, offset, uimmBits, FIELDS.c_zcb_uimm2.name);
+
+    this.asmFrags.push(f['opcode'], f['reg_prime'], f['uimm'], f['rs1_prime']);
+    this.binFrags.push(f['funct3'], f['subop'], f['rs1_prime'], f['uimm'],
+      f['reg_prime'], f['opcode']);
+  }
+
+  /**
    * Decodes CA-type instruction
    */
-  #decodeCA() {
+  #decodeCA(inst) {
     // Get fields
     const funct6     = getBits(this.#bin, FIELDS.c_funct6.pos);
     const rdRs1Prime = getBits(this.#bin, FIELDS.c_rd_rs1_prime.pos);
@@ -1670,11 +1752,9 @@ export class Decoder {
 
     // Prepend bits to compressed register fields
     const rdRs1 = '01' + rdRs1Prime;
-    const rs2   = '01' + rs2Prime;
 
     // Convert fields to string representations
     const destSrc1 = decReg(rdRs1);
-    const src2     = decReg(rs2);
 
     // Create fragments
     const f = {
@@ -1682,8 +1762,22 @@ export class Decoder {
       funct6:       new Frag(FRAG.OPC, this.#mne, funct6, FIELDS.c_funct6.name),
       funct2:       new Frag(FRAG.OPC, this.#mne, funct2, FIELDS.c_funct2.name),
       rd_rs1_prime: new Frag(FRAG.RD, destSrc1, rdRs1Prime, FIELDS.c_rs2_prime.name),
-      rs2_prime:    new Frag(FRAG.RS2, src2, rs2Prime, FIELDS.c_rs1_prime.name),
     };
+
+    if (inst.subfunct3 !== undefined) {
+      // Zcb single-operand instructions (c.zext.b/h/w, c.sext.b/h, c.not):
+      // rs2' bits are a fixed sub-opcode selector, not a register
+      f['rs2_prime'] = new Frag(FRAG.OPC, this.#mne, rs2Prime, FIELDS.c_zcb_subfunct3.name);
+
+      this.asmFrags.push(f['opcode'], f['rd_rs1_prime']);
+      this.binFrags.push(f['funct6'], f['rd_rs1_prime'],
+        f['funct2'], f['rs2_prime'], f['opcode']);
+      return;
+    }
+
+    const rs2 = '01' + rs2Prime;
+    const src2 = decReg(rs2);
+    f['rs2_prime'] = new Frag(FRAG.RS2, src2, rs2Prime, FIELDS.c_rs1_prime.name);
 
     // Assembly fragments in order of instruction
     this.asmFrags.push(f['opcode'], f['rd_rs1_prime'], f['rs2_prime']);
@@ -1893,6 +1987,9 @@ function extractCLookupFields(binary) {
     'funct2_cb': getBits(binary, FIELDS.c_funct2_cb.pos),
     'rd_rs1': getBits(binary, FIELDS.c_rd_rs1.pos),
     'rs2': getBits(binary, FIELDS.c_rs2.pos),
+    'zcb_subop': getBits(binary, FIELDS.c_zcb_subop.pos),
+    'zcb_subop2': getBits(binary, FIELDS.c_zcb_subop2.pos),
+    'zcb_subfunct3': getBits(binary, FIELDS.c_zcb_subfunct3.pos),
   };
 }
 
