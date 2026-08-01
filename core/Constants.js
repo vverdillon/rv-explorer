@@ -1120,18 +1120,23 @@ export const ISA_C1_MOP = {
   [ISA_C['c.mop.15'].rdRs1Val]: 'c.mop.15',
 }
 
-// Privileged instruction set
-export const ISA_Priv = {
+// System instruction set: mret/wfi have no assigned RISC-V extension letter
+// (Machine-Level ISA is the mandatory baseline for any M-mode-capable hart,
+// same as base I has none) - "System" matches the informal name
+// riscv-opcodes itself uses internally (extensions/rv_system) for this bucket
+export const ISA_System = {
   // Trap-Return Instructions
-  sret: { isa: 'Priv', fmt: 'I-type', funct12: '000100000010', funct3: '000', opcode: OPCODE.SYSTEM },
-  mret: { isa: 'Priv', fmt: 'I-type', funct12: '001100000010', funct3: '000', opcode: OPCODE.SYSTEM },
+  mret: { isa: 'System', fmt: 'I-type', funct12: '001100000010', funct3: '000', opcode: OPCODE.SYSTEM },
 
   // Interrupt-Management Instructions
-  wfi: { isa: 'Priv', fmt: 'I-type', funct12: '000100000101', funct3: '000', opcode: OPCODE.SYSTEM },
+  wfi: { isa: 'System', fmt: 'I-type', funct12: '000100000101', funct3: '000', opcode: OPCODE.SYSTEM },
 }
 
 // S (supervisor) instruction set
 export const ISA_S = {
+  // Trap-Return Instructions
+  sret: { isa: 'S', fmt: 'I-type', funct12: '000100000010', funct3: '000', opcode: OPCODE.SYSTEM },
+
   // R-type-like: fixed funct7, rd fixed to 0, rs1/rs2 real registers
   'sfence.vma': { isa: 'S', fmt: 'R-type', funct7: '0001001', funct3: '000', opcode: OPCODE.SYSTEM },
 }
@@ -1960,9 +1965,9 @@ export const ISA_SYSTEM = {
   [ISA_RV32I['ecall'].funct3]: {
     [ISA_RV32I['ecall'].funct12]:   'ecall',
     [ISA_RV32I['ebreak'].funct12]:  'ebreak',
-    [ISA_Priv['sret'].funct12]:     'sret',
-    [ISA_Priv['mret'].funct12]:     'mret',
-    [ISA_Priv['wfi'].funct12]:      'wfi',
+    [ISA_S['sret'].funct12]:        'sret',
+    [ISA_System['mret'].funct12]:   'mret',
+    [ISA_System['wfi'].funct12]:    'wfi',
     [ISA_Zawrs['wrs.nto'].funct12]: 'wrs.nto',
     [ISA_Zawrs['wrs.sto'].funct12]: 'wrs.sto',
     [ISA_Smrnmi['mnret'].funct12]:  'mnret',
@@ -2895,7 +2900,7 @@ export const ISA = Object.assign({},
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfbfmin, ISA_Zfa,
   ISA_Smrnmi, ISA_Svinval, ISA_Zimop, ISA_Zicfiss, ISA_H,
   ISA_S, ISA_Sdext, ISA_Ssctr, ISA_V,
-  ISA_Priv);
+  ISA_System);
 
   /* Hierarchy of instructions per ISA subset */
 export const ISA_Subsets = {
@@ -2957,5 +2962,5 @@ export const ISA_Subsets = {
   Sdext: ISA_Sdext,
   Ssctr: ISA_Ssctr,
   V: ISA_V,
-  Priv: ISA_Priv
+  System: ISA_System
 }

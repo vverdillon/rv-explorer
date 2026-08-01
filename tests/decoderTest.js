@@ -620,6 +620,30 @@ function dec_zba_opimm32_slliuw() {
 }
 
 /*
+ * S extension
+ */
+function dec_s_system_sret() {
+    let inst = new Instruction('10200073');
+    assertEq(inst.asm, 'sret');
+    assertEq(inst.isa, 'S');
+}
+
+/*
+ * System (mret/wfi - no assigned extension letter, matches riscv-opcodes'
+ * own "rv_system" bucket)
+ */
+function dec_system_system_mret() {
+    let inst = new Instruction('30200073');
+    assertEq(inst.asm, 'mret');
+    assertEq(inst.isa, 'System');
+}
+
+function dec_system_system_wfi() {
+    let inst = new Instruction('10500073');
+    assertEq(inst.asm, 'wfi');
+}
+
+/*
  * Zcb extension
  */
 function dec_zcb_c0_clbu() {
@@ -1390,6 +1414,9 @@ batchTests('Decoder Tests', [
     ['Dec - Zfa      - OP-FP     - fminm.s', dec_zfa_opfp_fminms],
     ['Dec - Zfa      - OP-FP     - fleq.s', dec_zfa_opfp_fleqs],
     ['Dec - Zfa      - OP-FP     - fcvtmod.w.d', dec_zfa_opfp_fcvtmodwd],
+    ['Dec - S        - SYSTEM    - sret', dec_s_system_sret],
+    ['Dec - System   - SYSTEM    - mret', dec_system_system_mret],
+    ['Dec - System   - SYSTEM    - wfi', dec_system_system_wfi],
     ['Dec - Zcb      - C0        - c.lbu', dec_zcb_c0_clbu],
     ['Dec - Zcb      - C0        - c.lh', dec_zcb_c0_clh],
     ['Dec - Zcb      - C0        - c.sb', dec_zcb_c0_csb],

@@ -803,6 +803,25 @@ function enc_zfa_opfp_fmvhxd() {
 }
 
 /*
+ * S extension
+ */
+function enc_s_system_sret() {
+    let inst = new Instruction('sret');
+    assertEq(inst.hex, '10200073');
+    assertEq(inst.isa, 'S');
+}
+
+/*
+ * System (mret/wfi - no assigned extension letter, matches riscv-opcodes'
+ * own "rv_system" bucket)
+ */
+function enc_system_system_wfi() {
+    let inst = new Instruction('wfi');
+    assertEq(inst.hex, '10500073');
+    assertEq(inst.isa, 'System');
+}
+
+/*
  * Zcb extension
  */
 function enc_zcb_c0_clbu() {
@@ -1233,6 +1252,8 @@ batchTests('Encoder Tests', [
     ['Enc - Zfa      - OP-FP     - fmaxm.d', enc_zfa_opfp_fmaxmd],
     ['Enc - Zfa      - OP-FP     - froundnx.s', enc_zfa_opfp_froundnxs],
     ['Enc - Zfa      - OP-FP     - fmvh.x.d', enc_zfa_opfp_fmvhxd],
+    ['Enc - S        - SYSTEM    - sret', enc_s_system_sret],
+    ['Enc - System   - SYSTEM    - wfi', enc_system_system_wfi],
     ['Enc - Zcb      - C0        - c.lbu', enc_zcb_c0_clbu],
     ['Enc - Zcb      - C0        - c.lh', enc_zcb_c0_clh],
     ['Enc - Zcb      - C0        - c.sb', enc_zcb_c0_csb],
