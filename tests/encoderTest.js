@@ -726,6 +726,27 @@ function enc_zbkb_opimm_unzip() {
     assertEq(inst.isa, 'RV32Zbkb');
 }
 
+/*
+ * Zknd/Zkne/Zknh extensions
+ */
+function enc_zknd_op_aes64ks2() {
+    let inst = new Instruction('aes64ks2 x5, x6, x7');
+    assertEq(inst.hex, '7e7302b3');
+    assertEq(inst.isa, 'RV64Zknd');
+}
+
+function enc_zkne_op_aes32esi() {
+    let inst = new Instruction('aes32esi x5, x6, x7, 1');
+    assertEq(inst.hex, '627302b3');
+    assertEq(inst.isa, 'RV32Zkne');
+}
+
+function enc_zknh_opimm_sha256sum0() {
+    let inst = new Instruction('sha256sum0 x5, x6');
+    assertEq(inst.hex, '10031293');
+    assertEq(inst.isa, 'Zknh');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -826,6 +847,9 @@ batchTests('Encoder Tests', [
     ['Enc - Zbkx     - OP        - xperm8', enc_zbkx_op_xperm8],
     ['Enc - Zbkb     - OP        - pack', enc_zbkb_op_pack],
     ['Enc - Zbkb     - OP-IMM    - unzip', enc_zbkb_opimm_unzip],
+    ['Enc - Zknd     - OP        - aes64ks2', enc_zknd_op_aes64ks2],
+    ['Enc - Zkne     - OP        - aes32esi', enc_zkne_op_aes32esi],
+    ['Enc - Zknh     - OP-IMM    - sha256sum0', enc_zknh_opimm_sha256sum0],
 ]);
 
 // Newline

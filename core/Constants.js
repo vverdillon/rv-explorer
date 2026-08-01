@@ -91,6 +91,10 @@ export const FIELDS = {
   // I-type: bit-manipulation instructions with a fixed 6-bit prefix (e.g. Zba/Zbb/Zbs)
   i_funct6:     { pos: [31, 6], name: 'funct6' },
 
+  // I-type: Zknd round-number instruction (aes64ks1i) with a fixed 8-bit prefix
+  i_funct8:     { pos: [31, 8], name: 'funct8' },
+  i_rnum:       { pos: [23, 4], name: 'rnum' },
+
   // I-type: trap instructions
   i_funct12: { pos: [31, 12], name: 'funct12' },
 
@@ -431,6 +435,36 @@ export const ISA_Zbkc = {
 export const ISA_Zbkx = {
   xperm4: { isa: 'Zbkx', fmt: 'R-type', funct7: '0010100', funct3: '010', opcode: OPCODE.OP },
   xperm8: { isa: 'Zbkx', fmt: 'R-type', funct7: '0010100', funct3: '100', opcode: OPCODE.OP },
+}
+
+// Zknd (NIST suite: AES decryption) instruction set - RV64 only
+export const ISA_Zknd = {
+  'aes64dsm':  { isa: 'RV64Zknd', fmt: 'R-type', funct7: '0011111', funct3: '000', opcode: OPCODE.OP },
+  'aes64ds':   { isa: 'RV64Zknd', fmt: 'R-type', funct7: '0011101', funct3: '000', opcode: OPCODE.OP },
+  'aes64ks2':  { isa: 'RV64Zknd', fmt: 'R-type', funct7: '0111111', funct3: '000', opcode: OPCODE.OP },
+  // fixed 8-bit prefix (imm[11:4]) + 4-bit round-number immediate (imm[3:0]), valid range 0-10
+  'aes64ks1i': { isa: 'RV64Zknd', fmt: 'I-type', funct8: '00110001', funct3: '001', opcode: OPCODE.OP_IMM },
+  'aes64im':   { isa: 'RV64Zknd', fmt: 'I-type', funct12: '001100000000', funct3: '001', opcode: OPCODE.OP_IMM },
+}
+
+// Zkne (NIST suite: AES encryption) instruction set - RV64 only
+//   Also requires aes64ks1i/aes64ks2 from Zknd, already registered there
+export const ISA_Zkne = {
+  'aes64esm': { isa: 'RV64Zkne', fmt: 'R-type', funct7: '0011011', funct3: '000', opcode: OPCODE.OP },
+  'aes64es':  { isa: 'RV64Zkne', fmt: 'R-type', funct7: '0011001', funct3: '000', opcode: OPCODE.OP },
+}
+
+// Zknh (NIST suite: hash function) instruction set
+export const ISA_Zknh = {
+  'sha256sum0': { isa: 'Zknh',     fmt: 'I-type', funct12: '000100000000', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sha256sum1': { isa: 'Zknh',     fmt: 'I-type', funct12: '000100000001', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sha256sig0': { isa: 'Zknh',     fmt: 'I-type', funct12: '000100000010', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sha256sig1': { isa: 'Zknh',     fmt: 'I-type', funct12: '000100000011', funct3: '001', opcode: OPCODE.OP_IMM },
+
+  'sha512sum0': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000100', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sha512sum1': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000101', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sha512sig0': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000110', funct3: '001', opcode: OPCODE.OP_IMM },
+  'sha512sig1': { isa: 'RV64Zknh', fmt: 'I-type', funct12: '000100000111', funct3: '001', opcode: OPCODE.OP_IMM },
 }
 
 // Zicond (integer conditional operations) instruction set
@@ -863,6 +897,13 @@ export const ISA_OP = {
   // Zbkb
   [ISA_Zbkb['pack'].funct7  + ISA_Zbkb['pack'].funct3]:  'pack',
   [ISA_Zbkb['packh'].funct7 + ISA_Zbkb['packh'].funct3]: 'packh',
+  // Zknd
+  [ISA_Zknd['aes64dsm'].funct7 + ISA_Zknd['aes64dsm'].funct3]: 'aes64dsm',
+  [ISA_Zknd['aes64ds'].funct7  + ISA_Zknd['aes64ds'].funct3]:  'aes64ds',
+  [ISA_Zknd['aes64ks2'].funct7 + ISA_Zknd['aes64ks2'].funct3]: 'aes64ks2',
+  // Zkne
+  [ISA_Zkne['aes64esm'].funct7 + ISA_Zkne['aes64esm'].funct3]: 'aes64esm',
+  [ISA_Zkne['aes64es'].funct7  + ISA_Zkne['aes64es'].funct3]:  'aes64es',
 }
 
 export const ISA_OP_32 = {
@@ -964,6 +1005,27 @@ export const ISA_OP_IMM = {
     },
     [ISA_Zbkb['zip'].funct12.substring(0, 6)]: {
       [ISA_Zbkb['zip'].funct12.substring(6)]: 'zip',
+    },
+    // Zknh/Zksh hash instructions share this 6-bit prefix, disambiguated by
+    // their full 6-bit suffix (imm[5:0])
+    [ISA_Zknh['sha256sum0'].funct12.substring(0, 6)]: {
+      [ISA_Zknh['sha256sum0'].funct12.substring(6)]: 'sha256sum0',
+      [ISA_Zknh['sha256sum1'].funct12.substring(6)]: 'sha256sum1',
+      [ISA_Zknh['sha256sig0'].funct12.substring(6)]: 'sha256sig0',
+      [ISA_Zknh['sha256sig1'].funct12.substring(6)]: 'sha256sig1',
+      [ISA_Zknh['sha512sum0'].funct12.substring(6)]: 'sha512sum0',
+      [ISA_Zknh['sha512sum1'].funct12.substring(6)]: 'sha512sum1',
+      [ISA_Zknh['sha512sig0'].funct12.substring(6)]: 'sha512sig0',
+      [ISA_Zknh['sha512sig1'].funct12.substring(6)]: 'sha512sig1',
+    },
+    // aes64im (fully-fixed funct12) and aes64ks1i (8-bit prefix + 4-bit rnum)
+    // share this 6-bit prefix but need a further 2-bit split to tell them
+    // apart, hence the extra nesting level
+    [ISA_Zknd['aes64im'].funct12.substring(0, 6)]: {
+      [ISA_Zknd['aes64im'].funct12.substring(6, 8)]: {
+        [ISA_Zknd['aes64im'].funct12.substring(8)]: 'aes64im',
+      },
+      [ISA_Zknd['aes64ks1i'].funct8.substring(6, 8)]: 'aes64ks1i',
     },
   },
   [ISA_RV32I['srli'].funct3]: {
@@ -1875,6 +1937,7 @@ export const ISA = Object.assign({},
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
   ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
+  ISA_Zknd, ISA_Zkne, ISA_Zknh,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin,
   ISA_Priv);
 
@@ -1904,6 +1967,11 @@ export const ISA_Subsets = {
   Zbkc: ISA_Zbkc,
   Zbkx: ISA_Zbkx,
   Zbs: ISA_Zbs,
+  Zknd: ISA_Zknd,
+  Zkne: Object.assign({}, ISA_Zkne, {
+    'aes64ks1i': ISA_Zknd['aes64ks1i'], 'aes64ks2': ISA_Zknd['aes64ks2'],
+  }),
+  Zknh: ISA_Zknh,
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,

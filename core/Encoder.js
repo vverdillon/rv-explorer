@@ -334,6 +334,14 @@ export class Encoder {
       }
       imm = this.#inst.funct7 + encImm(immediate, 5);
 
+    } else if (this.#inst.funct8 !== undefined) {
+      // Round-number instructions (aes64ks1i): fixed 8-bit prefix plus a
+      //   4-bit round-number immediate, valid range 0-10
+      if (immediate < 0 || immediate > 10) {
+        throw 'Invalid rnum field (out of range): "' + immediate + '"';
+      }
+      imm = this.#inst.funct8 + encImm(immediate, 4);
+
     // Shift instruction
     } else if (this.#inst.shtyp !== undefined) {
       // Determine shift-amount width based on opcode or config ISA

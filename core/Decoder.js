@@ -505,18 +505,18 @@ export class Decoder {
     } else {
       // Instructions sharing a funct3 are disambiguated by a fixed-width prefix
       // of imm[11:0] (width implied by the table's own key length), possibly
-      // nested one level further for instructions sharing that same prefix too
-      const width = Object.keys(table)[0].length;
-      let entry = table[imm.substring(0, width)];
-      if (entry === undefined) {
-        throw `Detected ${opcodeName} instruction but invalid funct6/funct7 field`;
-      }
-      if (typeof entry !== 'string') {
-        const width2 = Object.keys(entry)[0].length;
-        entry = entry[imm.substring(width, width + width2)];
-        if (entry === undefined) {
-          throw `Detected ${opcodeName} instruction but invalid funct12 field`;
+      // nested further for instructions sharing that same prefix too (e.g.
+      // aes64im/aes64ks1i, which share a 6-bit prefix but need a further
+      // 2-bit split before aes64ks1i's variable rnum bits are reached)
+      let entry = table, consumed = 0;
+      while (typeof entry !== 'string') {
+        const width = Object.keys(entry)[0].length;
+        const next = entry[imm.substring(consumed, consumed + width)];
+        if (next === undefined) {
+          throw `Detected ${opcodeName} instruction but invalid funct6/funct7/funct12 field`;
         }
+        entry = next;
+        consumed += width;
       }
       this.#mne = entry;
     }
@@ -572,6 +572,23 @@ export class Decoder {
 
       f['imm'] = new Frag(FRAG.IMM, shamt, shamtBits, FIELDS.i_shamt.name);
       f['shift'] = new Frag(FRAG.OPC, this.#mne, funct7, FIELDS.r_funct7.name);
+
+      this.asmFrags.push(f['opcode'], f['rd'], f['rs1'], f['imm']);
+      this.binFrags.push(f['shift'], f['imm'], f['rs1'], f['funct3'], f['rd'], f['opcode']);
+      return;
+
+    } else if (inst.funct8 !== undefined) {
+      // Round-number instructions (aes64ks1i): fixed 8-bit prefix (imm[11:4])
+      //   plus a 4-bit round-number immediate (imm[3:0])
+      const funct8 = imm.substring(0, 8);
+      const rnumBits = imm.substring(8);
+      if (funct8 !== inst.funct8) {
+        throw `Detected ${this.#mne} instruction but invalid funct8 field`;
+      }
+      const rnum = decImm(rnumBits, false);
+
+      f['imm'] = new Frag(FRAG.IMM, rnum, rnumBits, FIELDS.i_rnum.name);
+      f['shift'] = new Frag(FRAG.OPC, this.#mne, funct8, FIELDS.i_funct8.name);
 
       this.asmFrags.push(f['opcode'], f['rd'], f['rs1'], f['imm']);
       this.binFrags.push(f['shift'], f['imm'], f['rs1'], f['funct3'], f['rd'], f['opcode']);

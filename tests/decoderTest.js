@@ -798,6 +798,52 @@ function dec_zbkb_opimm_zip() {
     assertEq(inst.isa, 'RV32Zbkb');
 }
 
+/*
+ * Zknd/Zkne/Zknh extensions
+ */
+function dec_zknd_op_aes64dsm() {
+    let inst = new Instruction('3e7302b3', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'aes64dsm x5, x6, x7');
+    assertEq(inst.isa, 'RV64Zknd');
+}
+
+function dec_zknd_opimm_aes64ks1i() {
+    let inst = new Instruction('31531293', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'aes64ks1i x5, x6, 5');
+}
+
+function dec_zknd_op_aes32dsi() {
+    // RV32-only 4-operand form (rd, rs1, rs2, bs), bs carved from funct7
+    let inst = new Instruction('aa7302b3');
+    assertEq(inst.asm, 'aes32dsi x5, x6, x7, 2');
+    assertEq(inst.isa, 'RV32Zknd');
+}
+
+function dec_zkne_op_aes64es() {
+    let inst = new Instruction('327302b3', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'aes64es x5, x6, x7');
+    assertEq(inst.isa, 'RV64Zkne');
+}
+
+function dec_zknh_opimm_sha256sig0() {
+    let inst = new Instruction('10231293');
+    assertEq(inst.asm, 'sha256sig0 x5, x6');
+    assertEq(inst.isa, 'Zknh');
+}
+
+function dec_zknh_opimm_sha512sig0() {
+    let inst = new Instruction('10631293', { ISA:COPTS_ISA.RV64I });
+    assertEq(inst.asm, 'sha512sig0 x5, x6');
+    assertEq(inst.isa, 'RV64Zknh');
+}
+
+function dec_zknh_op_sha512sig0l() {
+    // RV32-only register-pair-half form
+    let inst = new Instruction('540302b3');
+    assertEq(inst.asm, 'sha512sig0l x5, x6, x0');
+    assertEq(inst.isa, 'RV32Zknh');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -908,6 +954,13 @@ batchTests('Decoder Tests', [
     ['Dec - Zbkb     - OP        - packh', dec_zbkb_op_packh],
     ['Dec - Zbkb     - OP-IMM    - brev8', dec_zbkb_opimm_brev8],
     ['Dec - Zbkb     - OP-IMM    - zip', dec_zbkb_opimm_zip],
+    ['Dec - Zknd     - OP        - aes64dsm', dec_zknd_op_aes64dsm],
+    ['Dec - Zknd     - OP-IMM    - aes64ks1i', dec_zknd_opimm_aes64ks1i],
+    ['Dec - Zknd     - OP        - aes32dsi', dec_zknd_op_aes32dsi],
+    ['Dec - Zkne     - OP        - aes64es', dec_zkne_op_aes64es],
+    ['Dec - Zknh     - OP-IMM    - sha256sig0', dec_zknh_opimm_sha256sig0],
+    ['Dec - Zknh     - OP-IMM    - sha512sig0', dec_zknh_opimm_sha512sig0],
+    ['Dec - Zknh     - OP        - sha512sig0l', dec_zknh_op_sha512sig0l],
 ]);
 
 // Newline
