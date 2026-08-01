@@ -803,6 +803,29 @@ function dec_h_system_hsvw() {
 }
 
 /*
+ * S, Sdext, Ssctr extensions
+ */
+function dec_s_system_sfencevma() {
+    let inst = new Instruction('12628073');
+    let instAbi = new Instruction('12628073', { ABI:true });
+    assertEq(inst.asm, 'sfence.vma x5, x6');
+    assertEq(instAbi.asm, 'sfence.vma t0, t1');
+    assertEq(inst.isa, 'S');
+}
+
+function dec_sdext_system_dret() {
+    let inst = new Instruction('7b200073');
+    assertEq(inst.asm, 'dret');
+    assertEq(inst.isa, 'Sdext');
+}
+
+function dec_ssctr_system_sctrclr() {
+    let inst = new Instruction('10400073');
+    assertEq(inst.asm, 'sctrclr');
+    assertEq(inst.isa, 'Ssctr');
+}
+
+/*
  * Execute tests
  */
 /*
@@ -1237,6 +1260,9 @@ batchTests('Decoder Tests', [
     ['Dec - H        - SYSTEM    - hlvx.hu', dec_h_system_hlvxhu],
     ['Dec - H        - SYSTEM    - hlv.d', dec_h_system_hlvd],
     ['Dec - H        - SYSTEM    - hsv.w', dec_h_system_hsvw],
+    ['Dec - S        - SYSTEM    - sfence.vma', dec_s_system_sfencevma],
+    ['Dec - Sdext    - SYSTEM    - dret', dec_sdext_system_dret],
+    ['Dec - Ssctr    - SYSTEM    - sctrclr', dec_ssctr_system_sctrclr],
 ]);
 
 // Newline

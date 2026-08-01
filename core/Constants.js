@@ -1100,6 +1100,22 @@ export const ISA_Priv = {
   wfi: { isa: 'Priv', fmt: 'I-type', funct12: '000100000101', funct3: '000', opcode: OPCODE.SYSTEM },
 }
 
+// S (supervisor) instruction set
+export const ISA_S = {
+  // R-type-like: fixed funct7, rd fixed to 0, rs1/rs2 real registers
+  'sfence.vma': { isa: 'S', fmt: 'R-type', funct7: '0001001', funct3: '000', opcode: OPCODE.SYSTEM },
+}
+
+// Sdext (external debug) instruction set
+export const ISA_Sdext = {
+  dret: { isa: 'Sdext', fmt: 'I-type', funct12: '011110110010', funct3: '000', opcode: OPCODE.SYSTEM },
+}
+
+// Ssctr (control transfer records) instruction set
+export const ISA_Ssctr = {
+  sctrclr: { isa: 'Ssctr', fmt: 'I-type', funct12: '000100000100', funct3: '000', opcode: OPCODE.SYSTEM },
+}
+
 // Smrnmi (resumable non-maskable interrupts) instruction set
 export const ISA_Smrnmi = {
   mnret: { isa: 'Smrnmi', fmt: 'I-type', funct12: '011100000010', funct3: '000', opcode: OPCODE.SYSTEM },
@@ -1481,9 +1497,12 @@ export const ISA_SYSTEM = {
     [ISA_Smrnmi['mnret'].funct12]:  'mnret',
     [ISA_Svinval['sfence.w.inval'].funct12]:  'sfence.w.inval',
     [ISA_Svinval['sfence.inval.ir'].funct12]: 'sfence.inval.ir',
+    [ISA_Sdext['dret'].funct12]:    'dret',
+    [ISA_Ssctr['sctrclr'].funct12]: 'sctrclr',
     // R-type-like forms (fixed 7-bit funct7, real rs1/rs2): looked up via
     // this same funct12 key's 7-bit prefix when the full 12-bit match
     // misses - see the fallback in Decoder.js/Encoder.js
+    [ISA_S['sfence.vma'].funct7]:          'sfence.vma',
     [ISA_Svinval['sinval.vma'].funct7]:   'sinval.vma',
     [ISA_Svinval['hinval.vvma'].funct7]:  'hinval.vvma',
     [ISA_Svinval['hinval.gvma'].funct7]:  'hinval.gvma',
@@ -2402,6 +2421,7 @@ export const ISA = Object.assign({},
   ISA_Zknd, ISA_Zkne, ISA_Zknh, ISA_Zksed, ISA_Zksh, ISA_Zicbo,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfa,
   ISA_Smrnmi, ISA_Svinval, ISA_Zimop, ISA_Zicfiss, ISA_H,
+  ISA_S, ISA_Sdext, ISA_Ssctr,
   ISA_Priv);
 
   /* Hierarchy of instructions per ISA subset */
@@ -2459,5 +2479,8 @@ export const ISA_Subsets = {
   Zimop: ISA_Zimop,
   Zicfiss: ISA_Zicfiss,
   H: ISA_H,
+  S: ISA_S,
+  Sdext: ISA_Sdext,
+  Ssctr: ISA_Ssctr,
   Priv: ISA_Priv
 }

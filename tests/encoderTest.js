@@ -962,6 +962,27 @@ function enc_h_system_hsvd() {
     assertEq(inst.isa, 'RV64H');
 }
 
+/*
+ * S, Sdext, Ssctr extensions
+ */
+function enc_s_system_sfencevma() {
+    let inst = new Instruction('sfence.vma x5, x6');
+    let instAbi = new Instruction('sfence.vma t0, t1');
+    assertEq(inst.hex, '12628073');
+    assertEq(instAbi.hex, inst.hex);
+    assertEq(inst.isa, 'S');
+}
+
+function enc_sdext_system_dret() {
+    let inst = new Instruction('dret');
+    assertEq(inst.hex, '7b200073');
+}
+
+function enc_ssctr_system_sctrclr() {
+    let inst = new Instruction('sctrclr');
+    assertEq(inst.hex, '10400073');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -1097,6 +1118,9 @@ batchTests('Encoder Tests', [
     ['Enc - H        - SYSTEM    - hfence.gvma', enc_h_system_hfencegvma],
     ['Enc - H        - SYSTEM    - hlv.wu', enc_h_system_hlvwu],
     ['Enc - H        - SYSTEM    - hsv.d', enc_h_system_hsvd],
+    ['Enc - S        - SYSTEM    - sfence.vma', enc_s_system_sfencevma],
+    ['Enc - Sdext    - SYSTEM    - dret', enc_sdext_system_dret],
+    ['Enc - Ssctr    - SYSTEM    - sctrclr', enc_ssctr_system_sctrclr],
 ]);
 
 // Newline
