@@ -778,6 +778,26 @@ function dec_zbkx_op_xperm4() {
     assertEq(inst.isa, 'Zbkx');
 }
 
+/*
+ * Zbkb extension
+ */
+function dec_zbkb_op_packh() {
+    let inst = new Instruction('087372b3');
+    assertEq(inst.asm, 'packh x5, x6, x7');
+    assertEq(inst.isa, 'Zbkb');
+}
+
+function dec_zbkb_opimm_brev8() {
+    let inst = new Instruction('68735293');
+    assertEq(inst.asm, 'brev8 x5, x6');
+}
+
+function dec_zbkb_opimm_zip() {
+    let inst = new Instruction('08f31293');
+    assertEq(inst.asm, 'zip x5, x6');
+    assertEq(inst.isa, 'RV32Zbkb');
+}
+
 batchTests('Decoder Tests', [
     ['Dec - RV32I    - LUI       - lui', dec_rv32i_lui_lui],
     ['Dec - RV32I    - AUIPC     - auipc', dec_rv32i_auipc_auipc],
@@ -885,6 +905,9 @@ batchTests('Decoder Tests', [
     ['Dec - Zfhmin   - OP-FP     - fcvt.s.h', dec_zfhmin_opfp_fcvtsh],
     ['Dec - Zfhmin   - OP-FP     - fcvt.h.d', dec_zfhmin_opfp_fcvthd],
     ['Dec - Zbkx     - OP        - xperm4', dec_zbkx_op_xperm4],
+    ['Dec - Zbkb     - OP        - packh', dec_zbkb_op_packh],
+    ['Dec - Zbkb     - OP-IMM    - brev8', dec_zbkb_opimm_brev8],
+    ['Dec - Zbkb     - OP-IMM    - zip', dec_zbkb_opimm_zip],
 ]);
 
 // Newline

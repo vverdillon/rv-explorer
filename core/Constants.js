@@ -405,6 +405,20 @@ export const ISA_Zbs = {
   bseti:  { isa: 'Zbs', fmt: 'I-type', funct6: '001010', funct3: '001', opcode: OPCODE.OP_IMM },
 }
 
+// Zbkb (bit-manipulation for cryptography) instruction set
+//   Also requires rol/ror/andn/orn/xnor/rolw/rorw/roriw/rori/rev8 from Zbb,
+//   already registered there; only the instructions unique to Zbkb are added here
+export const ISA_Zbkb = {
+  pack:   { isa: 'Zbkb',     fmt: 'R-type', funct7: '0000100', funct3: '100', opcode: OPCODE.OP },
+  packh:  { isa: 'Zbkb',     fmt: 'R-type', funct7: '0000100', funct3: '111', opcode: OPCODE.OP },
+  packw:  { isa: 'RV64Zbkb', fmt: 'R-type', funct7: '0000100', funct3: '100', opcode: OPCODE.OP_32 },
+
+  'brev8': { isa: 'Zbkb', fmt: 'I-type', funct12: '011010000111', funct3: '101', opcode: OPCODE.OP_IMM },
+  // zip/unzip only exist for RV32 (superseded by other means on RV64/RV128)
+  zip:     { isa: 'RV32Zbkb', fmt: 'I-type', funct12: '000010001111', funct3: '001', opcode: OPCODE.OP_IMM },
+  unzip:   { isa: 'RV32Zbkb', fmt: 'I-type', funct12: '000010001111', funct3: '101', opcode: OPCODE.OP_IMM },
+}
+
 // Zbkc (carry-less multiplication for cryptography) instruction set
 //   A restriction of Zbc to clmul/clmulh (excludes clmulr); both instructions
 //   are already registered under Zbc, so this only adds the ISA_Subsets entry
@@ -846,6 +860,9 @@ export const ISA_OP = {
   // Zbkx
   [ISA_Zbkx['xperm4'].funct7 + ISA_Zbkx['xperm4'].funct3]: 'xperm4',
   [ISA_Zbkx['xperm8'].funct7 + ISA_Zbkx['xperm8'].funct3]: 'xperm8',
+  // Zbkb
+  [ISA_Zbkb['pack'].funct7  + ISA_Zbkb['pack'].funct3]:  'pack',
+  [ISA_Zbkb['packh'].funct7 + ISA_Zbkb['packh'].funct3]: 'packh',
 }
 
 export const ISA_OP_32 = {
@@ -869,6 +886,8 @@ export const ISA_OP_32 = {
   // Zbb
   [ISA_Zbb['rolw'].funct7 + ISA_Zbb['rolw'].funct3]: 'rolw',
   [ISA_Zbb['rorw'].funct7 + ISA_Zbb['rorw'].funct3]: 'rorw',
+  // Zbkb
+  [ISA_Zbkb['packw'].funct7 + ISA_Zbkb['packw'].funct3]: 'packw',
 }
 
 export const ISA_OP_64 = {
@@ -943,6 +962,9 @@ export const ISA_OP_IMM = {
       [ISA_Zbb['sext.b'].funct12.substring(6)]:  'sext.b',
       [ISA_Zbb['sext.h'].funct12.substring(6)]:  'sext.h',
     },
+    [ISA_Zbkb['zip'].funct12.substring(0, 6)]: {
+      [ISA_Zbkb['zip'].funct12.substring(6)]: 'zip',
+    },
   },
   [ISA_RV32I['srli'].funct3]: {
     [shamt6Prefix(ISA_RV32I['srli'])]:                 'srli',
@@ -957,6 +979,10 @@ export const ISA_OP_IMM = {
     [ISA_Zbb['rev8'].funct12.substring(0, 6)]: {
       [ISA_Zbb['rev8'].funct12.substring(6)]:      'rev8',
       [ISA_Zbb['rev8'].funct12Rv32.substring(6)]:  'rev8',
+      [ISA_Zbkb['brev8'].funct12.substring(6)]:    'brev8',
+    },
+    [ISA_Zbkb['unzip'].funct12.substring(0, 6)]: {
+      [ISA_Zbkb['unzip'].funct12.substring(6)]: 'unzip',
     },
   }
 }
@@ -1848,7 +1874,7 @@ export const ISA = Object.assign({},
   ISA_RV32I, ISA_RV64I, ISA_RV128I,
   ISA_Zifencei, ISA_Zicsr,
   ISA_M, ISA_A, ISA_F, ISA_D, ISA_Q, ISA_C,
-  ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkx, ISA_Zicond,
+  ISA_Zba, ISA_Zbb, ISA_Zbc, ISA_Zbs, ISA_Zbkb, ISA_Zbkx, ISA_Zicond,
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin,
   ISA_Priv);
 
@@ -1868,6 +1894,13 @@ export const ISA_Subsets = {
   Zba: ISA_Zba,
   Zbb: ISA_Zbb,
   Zbc: ISA_Zbc,
+  Zbkb: Object.assign({}, ISA_Zbkb, {
+    rol: ISA_Zbb.rol, ror: ISA_Zbb.ror,
+    andn: ISA_Zbb.andn, orn: ISA_Zbb.orn, xnor: ISA_Zbb.xnor,
+    rolw: ISA_Zbb.rolw, rorw: ISA_Zbb.rorw,
+    rori: ISA_Zbb.rori, roriw: ISA_Zbb.roriw,
+    rev8: ISA_Zbb.rev8,
+  }),
   Zbkc: ISA_Zbkc,
   Zbkx: ISA_Zbkx,
   Zbs: ISA_Zbs,

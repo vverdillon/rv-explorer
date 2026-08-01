@@ -711,6 +711,21 @@ function enc_zbkx_op_xperm8() {
     assertEq(inst.isa, 'Zbkx');
 }
 
+/*
+ * Zbkb extension
+ */
+function enc_zbkb_op_pack() {
+    let inst = new Instruction('pack x5, x6, x7');
+    assertEq(inst.hex, '087342b3');
+    assertEq(inst.isa, 'Zbkb');
+}
+
+function enc_zbkb_opimm_unzip() {
+    let inst = new Instruction('unzip x5, x6');
+    assertEq(inst.hex, '08f35293');
+    assertEq(inst.isa, 'RV32Zbkb');
+}
+
 batchTests('Encoder Tests', [
     ['Enc - RV32I    - LUI       - lui', enc_rv32i_lui_lui],
     ['Enc - RV32I    - AUIPC     - auipc', enc_rv32i_auipc_auipc],
@@ -809,6 +824,8 @@ batchTests('Encoder Tests', [
     ['Enc - Zfhmin   - OP-FP     - fmv.h.x', enc_zfhmin_opfp_fmvhx],
     ['Enc - Zfhmin   - OP-FP     - fcvt.q.h', enc_zfhmin_opfp_fcvtqh],
     ['Enc - Zbkx     - OP        - xperm8', enc_zbkx_op_xperm8],
+    ['Enc - Zbkb     - OP        - pack', enc_zbkb_op_pack],
+    ['Enc - Zbkb     - OP-IMM    - unzip', enc_zbkb_opimm_unzip],
 ]);
 
 // Newline
