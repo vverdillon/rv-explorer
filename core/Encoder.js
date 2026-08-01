@@ -143,6 +143,9 @@ export class Encoder {
         case 'CJ':
           this.#encodeCJ();
           break;
+        case 'CMJT':
+          this.#encodeCMJT();
+          break;
         default:
           throw `Unsupported C instruction format: ${this.#inst.fmt}`;
       }
@@ -910,6 +913,22 @@ export class Encoder {
 
     // Construct binary instruction
     this.bin = this.#inst.funct3 + jumpTarget + this.#inst.opcode;
+  }
+
+  /**
+   * Encodes CMJT-type instruction (Zcmt cm.jalt)
+   */
+  #encodeCMJT() {
+    // Get operands
+    const index = this.#opr[0];
+
+    if (index < 0 || index > 255) {
+      throw `Invalid index field (out of range): "${index}"`;
+    }
+
+    // Construct binary instruction
+    this.bin = this.#inst.funct3 + this.#inst.subop + encImm(index, FIELDS.c_index.pos[1]) +
+      this.#inst.opcode;
   }
 }
 

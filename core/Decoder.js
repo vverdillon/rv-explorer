@@ -12,7 +12,7 @@ import { BASE, XLEN_MASK, FLI_STRINGS,
   ISA_LOAD, ISA_STORE, ISA_BRANCH, ISA_MISC_MEM, ISA_SYSTEM, ISA_AMO,
   ISA_LOAD_FP, ISA_STORE_FP, ISA_OP_FP,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
-  ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP,
+  ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP, ISA_C2_ZCMP,
   ISA, FRAG
 } from './Constants.js'
 
@@ -235,6 +235,9 @@ export class Decoder {
           break;
         case 'CJ':
           this.#decodeCJ(inst);
+          break;
+        case 'CMJT':
+          this.#decodeCMJT(inst);
           break;
         default:
           throw `Internal error: Detected ${this.#mne} in quadrant ${quadrant} but could not match instruction format`;
@@ -1279,7 +1282,18 @@ export class Decoder {
     // - rs2Val
     // - rdRs1Val
     this.#mne = ISA_C2[fields['funct3']];
-    if (typeof this.#mne === 'object') {
+    if (fields['funct3'] === '101') {
+      // Zcmt/Zcmp claim specific bit patterns within this space (mutually
+      // exclusive with the D extension's c.fsdsp/c.sqsp on real hardware,
+      // but this tool has no extension-exclusivity mechanism); try those
+      // first and fall back to the usual xlen dispatch otherwise
+      const zcmp = ISA_C2_ZCMP[fields['c2_subop']];
+      if (typeof zcmp === 'string') {
+        this.#mne = zcmp;
+      } else if (typeof this.#mne === 'object') {
+        this.#mne = this.#mne[this.#xlens] ?? this.#mne[XLEN_MASK.all];
+      }
+    } else if (typeof this.#mne === 'object') {
       this.#mne = this.#mne[this.#xlens] ?? this.#mne[XLEN_MASK.all];
       if (typeof this.#mne === 'object') {
         this.#mne = this.#mne[fields['funct4'][3]];
@@ -1920,6 +1934,33 @@ export class Decoder {
     // Binary fragments from MSB to LSB
     this.binFrags.push(f['funct3'], f['imm'], f['opcode']);
   }
+
+  /**
+   * Decodes CMJT-type instruction (Zcmt cm.jalt)
+   */
+  #decodeCMJT() {
+    // Get fields
+    const funct3 = getBits(this.#bin, FIELDS.c_funct3.pos);
+    const subop  = getBits(this.#bin, FIELDS.c_c2_subop.pos);
+    const index  = getBits(this.#bin, FIELDS.c_index.pos);
+
+    // Convert fields to string representations
+    const indexVal = decImm(index, false);
+
+    // Create fragments
+    const f = {
+      opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.c_opcode.name),
+      funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.c_funct3.name),
+      subop:  new Frag(FRAG.OPC, this.#mne, subop, FIELDS.c_c2_subop.name),
+      index:  new Frag(FRAG.IMM, indexVal, index, FIELDS.c_index.name),
+    };
+
+    // Assembly fragments in order of instruction
+    this.asmFrags.push(f['opcode'], f['index']);
+
+    // Binary fragments from MSB to LSB
+    this.binFrags.push(f['funct3'], f['subop'], f['index'], f['opcode']);
+  }
 }
 
 // Extract R-types fields from instruction
@@ -1998,6 +2039,8 @@ function extractCLookupFields(binary) {
     'zcb_subfunct3': getBits(binary, FIELDS.c_zcb_subfunct3.pos),
     'imm_ci_0': getBits(binary, FIELDS.c_imm_ci_0.pos),
     'imm_ci_1': getBits(binary, FIELDS.c_imm_ci_1.pos),
+    'c2_subop': getBits(binary, FIELDS.c_c2_subop.pos),
+    'c2_bit9': getBits(binary, FIELDS.c_c2_bit9.pos),
   };
 }
 

@@ -191,6 +191,15 @@ export const FIELDS = {
   // c.sext.b/h, c.not) - the rs2' position is repurposed as a fixed
   // 3-bit sub-opcode selector rather than a register
   c_zcb_subfunct3: { pos: [4, 3], name: 'subfunct3' },
+
+  // ISA_C: Zcmt/Zcmp share funct3='101' in quadrant C2 (mutually exclusive
+  // with the D extension's c.fsdsp/c.sqsp on real hardware), split by a
+  // fixed 3-bit sub-selector (bits[12:10])
+  c_c2_subop: { pos: [12, 3], name: 'subop' },
+  c_c2_bit9:  { pos: [9, 1],  name: 'subop2' },
+
+  // ISA_C: Zcmt cm.jalt jump-table index (bits[9:2])
+  c_index: { pos: [9, 8], name: 'index' },
 }
 
 
@@ -1010,6 +1019,17 @@ export const ISA_C = {
   'c.mop.11': { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 11, immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
   'c.mop.13': { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 13, immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
   'c.mop.15': { isa: 'Zcmop', xlens: 0b111, fmt: 'CI-type', funct3: '011', rdRs1Mask: 0b00, rdRs1Val: 15, immVal: 0, immBits: [[5], [[4,0]]], opcode: C_OPCODE.C1 },
+
+  // Zcmt: table-jump instruction, shares funct3='101' with Zcmp/c.fsdsp;
+  // see ISA_C2_ZCMP and the disambiguation in Decoder.js/Encoder.js
+  'cm.jalt': { isa: 'Zcmt', xlens: 0b111, fmt: 'CMJT-type', funct3: '101', subop: '000', opcode: C_OPCODE.C2 },
+}
+
+// Zcmt/Zcmp lookup: both share funct3='101' in quadrant C2 (mutually
+// exclusive with the D extension's c.fsdsp/c.sqsp on real hardware), keyed
+// by the 3-bit sub-selector at bits[12:10]
+export const ISA_C2_ZCMP = {
+  [ISA_C['cm.jalt'].subop]: 'cm.jalt',
 }
 
 // Zcmop lookup: c.lui's reserved nzimm=0 space, keyed by rd/rs1 field value
@@ -2273,6 +2293,7 @@ export const ISA_Subsets = {
     'c.zext.b', 'c.sext.b', 'c.zext.h', 'c.sext.h', 'c.zext.w', 'c.not', 'c.mul'),
   Zcmop: pick(ISA_C, 'c.mop.1', 'c.mop.3', 'c.mop.5', 'c.mop.7',
     'c.mop.9', 'c.mop.11', 'c.mop.13', 'c.mop.15'),
+  Zcmt: pick(ISA_C, 'cm.jalt'),
   Zicond: ISA_Zicond,
   Zawrs: ISA_Zawrs,
   Zacas: ISA_Zacas,
