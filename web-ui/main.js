@@ -11,6 +11,183 @@ import { FRAG, ISA_Subsets } from "../core/Constants.js";
 import { configDefault, COPTS_ISA } from "../core/Config.js";
 import { buildSearchResults, clearSearchResults, renderSearchResults, iterateSearchResults, getSelectedMnemonic, buildPlaceholder, getPlaceholderString } from "./completion.js";
 
+/* RISC-V unprivileged ISA manual base URL and per-extension chapter files.
+ * Maps an instruction's `isa` tag (with any RV32/RV64/RV128 prefix
+ * stripped) to the chapter it's documented in. Extensions with no entry
+ * here (Sdext, Ssctr, Smrnmi, Svinval, ...) are part of the *privileged*
+ * spec but have no chapter mapped below (yet). */
+const MANUAL_BASE = 'https://docs.riscv.org/reference/isa/v20260120/unpriv/';
+const MANUAL_CHAPTER = {
+  M: 'm-st-ext.html',
+  A: 'a-st-ext.html',
+  F: 'f-st-ext.html',
+  D: 'd-st-ext.html',
+  Q: 'q-st-ext.html',
+  C: 'c-st-ext.html',
+  DC: 'c-st-ext.html',
+  FC: 'c-st-ext.html',
+  Zba: 'b-st-ext.html',
+  Zbb: 'b-st-ext.html',
+  Zbc: 'b-st-ext.html',
+  Zbs: 'b-st-ext.html',
+  Zbkb: 'scalar-crypto.html',
+  Zbkx: 'scalar-crypto.html',
+  Zknd: 'scalar-crypto.html',
+  Zkne: 'scalar-crypto.html',
+  Zknh: 'scalar-crypto.html',
+  Zksed: 'scalar-crypto.html',
+  Zksh: 'scalar-crypto.html',
+  Zfh: 'zfh.html',
+  Zfhmin: 'zfh.html',
+  Zfa: 'zfa.html',
+  Zifencei: 'zifencei.html',
+  Zicsr: 'zicsr.html',
+  Zicbo: 'cmo.html',
+  Zawrs: 'zawrs.html',
+  Zacas: 'zacas.html',
+  Zabha: 'zabha.html',
+  Zicond: 'zicond.html',
+  Zimop: 'zimop.html',
+  Zcmop: 'zimop.html',
+  Zcb: 'zc.html',
+  Zcmp: 'zc.html',
+  Zcmt: 'zc.html',
+  Zicfiss: 'unpriv-cfi.html',
+  Zilsd: 'zilsd.html',
+  V: 'v-st-ext.html',
+  Zfbfmin: 'bfloat16.html',
+  Zvfbfmin: 'bfloat16.html',
+  Zvbb: 'vector-crypto.html',
+  Zvkg: 'vector-crypto.html',
+  Zvkned: 'vector-crypto.html',
+  Zvknha: 'vector-crypto.html',
+  Zvknhb: 'vector-crypto.html',
+  Zvksed: 'vector-crypto.html',
+  Zvksh: 'vector-crypto.html',
+}
+
+/* The privileged spec is a separate manual/base URL. None of these chapters
+ * expose per-instruction anchors either, same as most unprivileged chapters
+ * above. Ssctr shares its chapter with Smctr (the machine-level
+ * counterpart); that page explicitly documents both. Svinval's base
+ * sfence.w.inval/sfence.inval.ir/sinval.vma live in the Supervisor chapter
+ * (same page as 'S'); its H-gated hinval.vvma/hinval.gvma (isa
+ * 'Svinval_H') live in the Hypervisor chapter instead (same page as 'H') -
+ * both verified by grepping each page for the actual mnemonics. */
+const MANUAL_BASE_PRIV = 'https://docs.riscv.org/reference/isa/v20260120/priv/';
+const MANUAL_CHAPTER_PRIV = {
+  H: 'hypervisor.html',
+  S: 'supervisor.html',
+  System: 'machine.html',
+  Ssctr: 'smctr.html',
+  Smrnmi: 'rnmi.html',
+  Svinval: 'supervisor.html',
+  Svinval_H: 'hypervisor.html',
+}
+
+/* Sdext (external debug) is documented in a wholly separate spec/site from
+ * the ISA manual above - its own base URL and versioning. Its "Sdext (ISA
+ * Extension)" chapter has no per-instruction anchors and, oddly, never
+ * actually names/encodes dret despite being the extension's own chapter
+ * (verified directly against the live page) - still the right chapter to
+ * land on, just without an anchor. */
+const MANUAL_BASE_DEBUG = 'https://docs.riscv.org/reference/debug/v1.0/';
+const MANUAL_CHAPTER_DEBUG = {
+  Sdext: 'Sdext.html',
+}
+
+/* Most chapters in this manual version expose NO per-instruction anchors at
+ * all (confirmed by fetching every chapter above and grepping for
+ * `id="insns-*"`) - only B, scalar-crypto, cmo (Zicbo), zc (Zcb/Zcmp/Zcmt),
+ * zicond, bfloat16, and vector-crypto actually have them. Extensions
+ * omitted here fall back to linking at the chapter page. `sep` is the
+ * character each chapter substitutes for `.` in the mnemonic to build the
+ * anchor (most use `_`, zicond uses `-`, bfloat16.html keeps the dot
+ * literally - `sep: '.'` is a no-op replace). Zbkb/Zbkx additionally get a
+ * `-sc` suffix since their mnemonics duplicate ones already anchored in the
+ * B chapter (e.g. `pack`, `rol`, `zip`); Zknd/Zkne/Zknh/Zksed/Zksh are
+ * crypto-only and need none. vector-crypto.html anchors on the base
+ * mnemonic only, dropping everything from the first dot onward (e.g.
+ * `vaesdm.vv`/`vaesdm.vs` both land on `#insns-vaesdm`) - `truncate: true`
+ * does that; `rename` covers the one exception where even the base name
+ * differs from the anchor, `vsha2ch.vv`/`vsha2cl.vv` both collapsing to
+ * `#insns-vsha2c` (the manual documents them jointly as `vsha2c[hl].vv`).
+ * Zvknhb reuses Zvknha's own vsha2*.vv mnemonics (see the comment by their
+ * ISA_Subsets entries), so it needs the same rename. */
+const MANUAL_ANCHOR_SUPPORT = {
+  Zba: { sep: '_' },
+  Zbb: { sep: '_' },
+  Zbc: { sep: '_' },
+  Zbs: { sep: '_' },
+  Zbkb: { sep: '_', suffix: '-sc' },
+  Zbkx: { sep: '_', suffix: '-sc' },
+  Zknd: { sep: '_' },
+  Zkne: { sep: '_' },
+  Zknh: { sep: '_' },
+  Zksed: { sep: '_' },
+  Zksh: { sep: '_' },
+  Zicbo: { sep: '_' },
+  Zcb: { sep: '_' },
+  Zcmp: { sep: '_' },
+  Zcmt: { sep: '_' },
+  Zicond: { sep: '-' },
+  Zilsd: { sep: '_' },
+  Zfbfmin: { sep: '.' },
+  Zvfbfmin: { sep: '.' },
+  Zvbb: { truncate: true },
+  Zvkg: { truncate: true },
+  Zvkned: { truncate: true },
+  Zvknha: { truncate: true, rename: { 'vsha2ch.vv': 'vsha2c', 'vsha2cl.vv': 'vsha2c' } },
+  Zvknhb: { truncate: true, rename: { 'vsha2ch.vv': 'vsha2c', 'vsha2cl.vv': 'vsha2c' } },
+  Zvksed: { truncate: true },
+  Zvksh: { truncate: true },
+}
+
+/**
+ * Builds a docs.riscv.org manual URL for the given instruction, or null if
+ * its extension isn't part of the unprivileged manual (e.g. privileged/
+ * hypervisor extensions) or has no dedicated chapter here.
+ * @param {string} isa
+ * @param {string} instName
+ * @returns {string|null}
+ */
+function getManualUrl(isa, instName) {
+  // Quad-width (RV128) variants aren't documented in this manual
+  if (isa.startsWith('RV128')) {
+    return null;
+  }
+  // The base I extension is split across two XLEN-specific chapters
+  if (isa === 'RV32I') {
+    return MANUAL_BASE + 'rv32.html';
+  }
+  if (isa === 'RV64I') {
+    return MANUAL_BASE + 'rv64.html';
+  }
+  const ext = isa.replace(/^RV(32|64)/, '');
+  const privChapter = MANUAL_CHAPTER_PRIV[ext];
+  if (privChapter) {
+    // None of the privileged-spec chapters expose per-instruction anchors
+    return MANUAL_BASE_PRIV + privChapter;
+  }
+  const debugChapter = MANUAL_CHAPTER_DEBUG[ext];
+  if (debugChapter) {
+    return MANUAL_BASE_DEBUG + debugChapter;
+  }
+  const chapter = MANUAL_CHAPTER[ext];
+  if (!chapter) {
+    return null;
+  }
+  const anchorSupport = MANUAL_ANCHOR_SUPPORT[ext];
+  if (!anchorSupport) {
+    // No per-instruction anchor available in this chapter; land on the page.
+    return MANUAL_BASE + chapter;
+  }
+  const base = anchorSupport.rename?.[instName]
+    ?? (anchorSupport.truncate ? instName.split('.')[0] : instName.replace(/\./g, anchorSupport.sep));
+  const anchor = '#insns-' + base + (anchorSupport.suffix || '');
+  return MANUAL_BASE + chapter + anchor;
+}
+
 /* Define colors per frag ID */
 const fragColorMap = {
   [FRAG.UNSD]: '--color-fg',
@@ -219,11 +396,12 @@ function renderConversion(inst, abi=false) {
   document.getElementById('isa-data').innerText = inst.isa;
   const instName = inst.name;
   const isa = inst.isa;
-  if (isa.startsWith('RV128') || isa.endsWith('Q')) {
+  const manualUrl = getManualUrl(isa, instName);
+  if (manualUrl === null) {
     document.getElementById('isa-url').innerText = `Not available`
   } else {
     document.getElementById('isa-url').innerHTML = `
-    <a href="//riscv.github.io/riscv-unified-db/manual/html/isa/isa_20240411/insts/${instName}.html" 
+    <a href="${manualUrl}"
     target="_blank">${instName}</a>`
   }
 
