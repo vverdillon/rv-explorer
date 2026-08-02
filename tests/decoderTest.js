@@ -644,6 +644,19 @@ function dec_system_system_wfi() {
 }
 
 /*
+ * Zilsd extension
+ */
+function dec_zilsd_load_ld() {
+    // Bit-identical to RV64I's ld; only reinterpreted as a register-pair
+    // load under explicit RV32I config
+    let inst = new Instruction('01013903', { ISA:COPTS_ISA.RV32I });
+    let instAbi = new Instruction('01013903', { ISA:COPTS_ISA.RV32I, ABI:true });
+    assertEq(inst.asm, 'ld x18, 16(x2)');
+    assertEq(instAbi.asm, 'ld s2, 16(sp)');
+    assertEq(inst.isa, 'RV32Zilsd');
+}
+
+/*
  * Zcb extension
  */
 function dec_zcb_c0_clbu() {
@@ -1417,6 +1430,7 @@ batchTests('Decoder Tests', [
     ['Dec - S        - SYSTEM    - sret', dec_s_system_sret],
     ['Dec - System   - SYSTEM    - mret', dec_system_system_mret],
     ['Dec - System   - SYSTEM    - wfi', dec_system_system_wfi],
+    ['Dec - Zilsd    - LOAD      - ld', dec_zilsd_load_ld],
     ['Dec - Zcb      - C0        - c.lbu', dec_zcb_c0_clbu],
     ['Dec - Zcb      - C0        - c.lh', dec_zcb_c0_clh],
     ['Dec - Zcb      - C0        - c.sb', dec_zcb_c0_csb],

@@ -1132,6 +1132,23 @@ export const ISA_System = {
   wfi: { isa: 'System', fmt: 'I-type', funct12: '000100000101', funct3: '000', opcode: OPCODE.SYSTEM },
 }
 
+// Zilsd (load/store pair for RV32): reuses RV64I's ld/sd encodings
+// unmodified (bit-identical: same opcode/funct3), reinterpreted on RV32 as
+// loading/storing an even/odd register pair rather than a single 64-bit
+// register. Registered here purely for sidebar discoverability, like
+// ISA_Zbkc - the actual RV32 acceptance, even-register validation, and
+// isa relabeling live in Decoder.js/Encoder.js, gated on explicit RV32I
+// config since the encoding can't be told apart from RV64I's ld/sd by
+// its bits alone (compressed c.ld/c.sd/c.ldsp/c.sdsp forms - Zclsd - are
+// NOT implemented: on RV32 they'd reuse the exact same C0/C2 funct3 slot
+// already occupied by Zcf's c.flw/c.fsw/c.flwsp/c.fswsp, which the spec
+// itself calls out as a genuine incompatibility - this tool has no
+// mechanism to pick one interpretation over the other for that overlap)
+export const ISA_Zilsd = {
+  ld: ISA_RV64I.ld,
+  sd: ISA_RV64I.sd,
+}
+
 // S (supervisor) instruction set
 export const ISA_S = {
   // Trap-Return Instructions
@@ -2958,6 +2975,7 @@ export const ISA_Subsets = {
   Zimop: ISA_Zimop,
   Zicfiss: ISA_Zicfiss,
   H: ISA_H,
+  Zilsd: ISA_Zilsd,
   S: ISA_S,
   Sdext: ISA_Sdext,
   Ssctr: ISA_Ssctr,

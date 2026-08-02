@@ -1,5 +1,6 @@
 import { batchTests, assertEq } from './test.js';
 import { Instruction } from '../core/Instruction.js';
+import { COPTS_ISA } from '../core/Config.js';
 
 /*
  * RV32I
@@ -822,6 +823,17 @@ function enc_system_system_wfi() {
 }
 
 /*
+ * Zilsd extension
+ */
+function enc_zilsd_store_sd() {
+    let inst = new Instruction('sd s4, -8(a0)', { ISA:COPTS_ISA.RV32I });
+    let instAbi = new Instruction('sd x20, -8(x10)', { ISA:COPTS_ISA.RV32I });
+    assertEq(inst.hex, 'ff453c23');
+    assertEq(instAbi.hex, inst.hex);
+    assertEq(inst.isa, 'RV32Zilsd');
+}
+
+/*
  * Zcb extension
  */
 function enc_zcb_c0_clbu() {
@@ -1254,6 +1266,7 @@ batchTests('Encoder Tests', [
     ['Enc - Zfa      - OP-FP     - fmvh.x.d', enc_zfa_opfp_fmvhxd],
     ['Enc - S        - SYSTEM    - sret', enc_s_system_sret],
     ['Enc - System   - SYSTEM    - wfi', enc_system_system_wfi],
+    ['Enc - Zilsd    - STORE     - sd', enc_zilsd_store_sd],
     ['Enc - Zcb      - C0        - c.lbu', enc_zcb_c0_clbu],
     ['Enc - Zcb      - C0        - c.lh', enc_zcb_c0_clh],
     ['Enc - Zcb      - C0        - c.sb', enc_zcb_c0_csb],

@@ -493,6 +493,18 @@ export class Decoder {
         + 'instruction but invalid funct3 field';
     }
 
+    // Zilsd: under explicit RV32I config, 'ld' loads a 64-bit value into
+    // an even/odd register pair (rd, rd+1) instead of RV64I's single
+    // 64-bit register - bit-identical encoding, so this can only be
+    // resolved from the active config, not the bits themselves
+    if (this.#mne === 'ld' && this.#config.ISA === COPTS_ISA.RV32I) {
+      if (parseInt(rd, BASE.bin) % 2 !== 0) {
+        throw `Detected ld instruction with odd destination register x${parseInt(rd, BASE.bin)}: `
+          + 'register pair (Zilsd) requires an even register, odd is reserved';
+      }
+      this.isa = 'RV32Zilsd';
+    }
+
     // Convert fields to string representations
     const base = decReg(rs1),
           dest = decReg(rd, floatInst),
@@ -1042,6 +1054,17 @@ export class Decoder {
     if (this.#mne === undefined) {
       throw `Detected STORE${floatInst ? '-FP' : ''} `
         + 'instruction but invalid funct3 field';
+    }
+
+    // Zilsd: under explicit RV32I config, 'sd' stores a 64-bit value from
+    // an even/odd register pair (rs2, rs2+1) instead of RV64I's single
+    // 64-bit register - see the matching note in #decodeLOAD
+    if (this.#mne === 'sd' && this.#config.ISA === COPTS_ISA.RV32I) {
+      if (parseInt(rs2, BASE.bin) % 2 !== 0) {
+        throw `Detected sd instruction with odd source register x${parseInt(rs2, BASE.bin)}: `
+          + 'register pair (Zilsd) requires an even register, odd is reserved';
+      }
+      this.isa = 'RV32Zilsd';
     }
 
     // Convert fields to string representations

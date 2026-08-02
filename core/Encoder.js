@@ -112,6 +112,11 @@ export class Encoder {
           //   Ex. Zicsr, Zifencei
           this.xlens = XLEN_MASK.all;
       }
+      // Zilsd: ld/sd are additionally valid on RV32 (register-pair form) -
+      // see the even-register check and isa relabeling in Decoder.js
+      if (this.#mne === 'ld' || this.#mne === 'sd') {
+        this.xlens |= XLEN_MASK.rv32;
+      }
     }
 
     // Detect mismatch between ISA and configuration
