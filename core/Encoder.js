@@ -195,7 +195,11 @@ export class Encoder {
           this.#encodeVCrypto();
           break;
         case OPCODE.AMO:
-          this.#encodeAMO();
+          if (this.#inst.fmt === 'Zalasr') {
+            this.#encodeZalasr();
+          } else {
+            this.#encodeAMO();
+          }
           break;
 
           // I-type
@@ -792,6 +796,30 @@ export class Encoder {
     // Construct binary instruction
     this.bin = this.#inst.funct5 + aq + rl + rs2 + rs1 +
       this.#inst.funct3 + rd + this.#inst.opcode;
+  }
+
+  /**
+   * Encodes Zalasr (unratified load-acquire/store-release) instructions:
+   * mirrors Decoder.js's #decodeZalasr field layout
+   */
+  #encodeZalasr() {
+    const inst = this.#inst;
+    let rd, rs1, rs2, aq, rl;
+    if (inst.isLoad) {
+      rd = encReg(this.#opr[0]);
+      rs1 = encReg(this.#opr[1]);
+      rs2 = '00000';
+      aq = '1';
+      rl = '0';
+    } else {
+      rd = '00000';
+      rs2 = encReg(this.#opr[0]);
+      rs1 = encReg(this.#opr[1]);
+      aq = '0';
+      rl = '1';
+    }
+
+    this.bin = inst.funct5 + aq + rl + rs2 + rs1 + inst.funct3 + rd + inst.opcode;
   }
 
   /**

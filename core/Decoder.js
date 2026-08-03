@@ -9,7 +9,7 @@
 import { BASE, XLEN_MASK, FLI_STRINGS,
   FIELDS, OPCODE, C_OPCODE, REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
   ISA_OP, ISA_OP_32, ISA_OP_64, ISA_OP_BS, ISA_OP_IMM, ISA_OP_IMM_32, ISA_OP_IMM_64,
-  ISA_LOAD, ISA_STORE, ISA_BRANCH, ISA_MISC_MEM, ISA_SYSTEM, ISA_AMO,
+  ISA_LOAD, ISA_STORE, ISA_BRANCH, ISA_MISC_MEM, ISA_SYSTEM, ISA_AMO, ISA_ZALASR,
   ISA_LOAD_FP, ISA_STORE_FP, ISA_OP_FP,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
   ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP, ISA_C2_ZCMP,
@@ -97,7 +97,11 @@ export class Decoder {
           this.#decodeVCrypto();
           break;
         case OPCODE.AMO:
-          this.#decodeAMO();
+          if (ISA_ZALASR[getBits(this.#bin, FIELDS.r_funct5.pos) + getBits(this.#bin, FIELDS.funct3.pos)] !== undefined) {
+            this.#decodeZalasr();
+          } else {
+            this.#decodeAMO();
+          }
           break;
 
           // I-type
@@ -1627,6 +1631,67 @@ export class Decoder {
     this.asmFrags.push(f['rs1']);
 
     // Binary fragments from MSB to LSB
+    this.binFrags.push(f['funct5'], f['aq'], f['rl'], f['rs2'],
+      f['rs1'], f['funct3'], f['rd'], f['opcode']);
+  }
+
+  /**
+   * Decodes Zalasr (unratified load-acquire/store-release) instructions -
+   * shares the AMO opcode, but unlike ordinary AMO ops, one of aq/rl is
+   * baked into the mnemonic's identity, and loads have no real rs2 while
+   * stores have no real rd
+   */
+  #decodeZalasr() {
+    const fields = extractRFields(this.#bin);
+    const funct5 = fields['funct5'],
+      aq = fields['aq'],
+      rl = fields['rl'],
+      rs2 = fields['rs2'],
+      rs1 = fields['rs1'],
+      funct3 = fields['funct3'],
+      rd = fields['rd'];
+
+    this.#mne = ISA_ZALASR[funct5 + funct3];
+    const inst = ISA[this.#mne];
+
+    if (inst.isLoad) {
+      if (aq !== '1') {
+        throw `Detected ${this.#mne} with aq bit unset (reserved encoding)`;
+      }
+      if (rs2 !== '00000') {
+        throw `Detected ${this.#mne} with invalid rs2 field`;
+      }
+    } else {
+      if (rl !== '1') {
+        throw `Detected ${this.#mne} with rl bit unset (reserved encoding)`;
+      }
+      if (rd !== '00000') {
+        throw `Detected ${this.#mne} with invalid rd field`;
+      }
+    }
+
+    const dest = decReg(rd);
+    const addr = decReg(rs1);
+    const src  = decReg(rs2);
+
+    const f = {
+      opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.opcode.name),
+      rd:     new Frag(FRAG.RD, dest, rd, FIELDS.rd.name),
+      funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.funct3.name),
+      rs1:    new Frag(FRAG.RS1, addr, rs1, FIELDS.rs1.name, true),
+      rs2:    new Frag(inst.isLoad ? FRAG.UNSD : FRAG.RS2, src, rs2, FIELDS.rs2.name),
+      rl:     new Frag(FRAG.OPC, this.#mne, rl, FIELDS.r_rl.name),
+      aq:     new Frag(FRAG.OPC, this.#mne, aq, FIELDS.r_aq.name),
+      funct5: new Frag(FRAG.OPC, this.#mne, funct5, FIELDS.r_funct5.name),
+    };
+
+    if (inst.isLoad) {
+      this.asmFrags.push(f['opcode'], f['rd'], f['rs1']);
+    } else {
+      f['rd'].id = FRAG.UNSD;
+      this.asmFrags.push(f['opcode'], f['rs2'], f['rs1']);
+    }
+
     this.binFrags.push(f['funct5'], f['aq'], f['rl'], f['rs2'],
       f['rs1'], f['funct3'], f['rd'], f['opcode']);
   }

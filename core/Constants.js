@@ -512,6 +512,20 @@ export const ISA_Zbkx = {
   xperm8: { isa: 'Zbkx', fmt: 'R-type', funct7: '0010100', funct3: '100', opcode: OPCODE.OP },
 }
 
+// Zbp (unratified/draft - early, since-superseded generalized bit-
+// permutation proposal): only xperm16/xperm32 are genuinely new
+// encodings here, sharing Zbkx's xperm4/xperm8 funct7 slot, differentiated
+// by funct3. Zbp's other instructions (grevi/gorci/shfli/unshfli) are
+// generalized (any shamt) versions of what became the ratified, fixed-
+// shamt rev8/orc.b/zip/unzip - not implemented here, since generalizing
+// those would mean touching already-verified ratified Zbb/Zbkb decode
+// paths for an abandoned draft with no practical benefit over its
+// ratified, fixed-shamt descendants
+export const ISA_Zbp = {
+  xperm16: { isa: 'Zbp', fmt: 'R-type', funct7: '0010100', funct3: '110', opcode: OPCODE.OP },
+  xperm32: { isa: 'RV64Zbp', fmt: 'R-type', funct7: '0010100', funct3: '000', opcode: OPCODE.OP },
+}
+
 // Zknd (NIST suite: AES decryption) instruction set - RV64 only
 export const ISA_Zknd = {
   'aes64dsm':  { isa: 'RV64Zknd', fmt: 'R-type', funct7: '0011111', funct3: '000', opcode: OPCODE.OP },
@@ -649,6 +663,28 @@ export const ISA_A = {
   'amomax.q':  { isa: 'RV128A', fmt: 'R-type', funct5: '10100', funct3: '100', opcode: OPCODE.AMO },
   'amominu.q': { isa: 'RV128A', fmt: 'R-type', funct5: '11000', funct3: '100', opcode: OPCODE.AMO },
   'amomaxu.q': { isa: 'RV128A', fmt: 'R-type', funct5: '11100', funct3: '100', opcode: OPCODE.AMO },
+}
+
+// Zalasr (unratified/draft - load-acquire/store-release): reuses the AMO
+// opcode with two fresh funct5 codes (0x06 loads/0x07 stores), but unlike
+// ordinary AMO ops, aq/rl aren't free-floating annotation bits here - one
+// of them is baked into the mnemonic's identity (aq=1 for the ".aq"
+// loads, rl=1 for the ".rl" stores) while the other stays a real,
+// unconstrained bit position (per riscv-opcodes' variable_fields);
+// loads have no real rs2 (fixed 0) and stores have no real rd (fixed 0).
+// Handled by dedicated #decodeZalasr/#encodeZalasr methods rather than
+// folding into the shared, well-tested #decodeAMO/#encodeAMO, since
+// neither of those cases (fixed aq/rl identity bit, absent rd on a store)
+// occurs anywhere in the ratified A/Zacas/Zabha/Zicfiss AMO family.
+export const ISA_Zalasr = {
+  'lb.aq': { isa: 'Zalasr',    fmt: 'Zalasr', opcode: OPCODE.AMO, funct5: '00110', funct3: '000', isLoad: true },
+  'lh.aq': { isa: 'Zalasr',    fmt: 'Zalasr', opcode: OPCODE.AMO, funct5: '00110', funct3: '001', isLoad: true },
+  'lw.aq': { isa: 'Zalasr',    fmt: 'Zalasr', opcode: OPCODE.AMO, funct5: '00110', funct3: '010', isLoad: true },
+  'ld.aq': { isa: 'RV64Zalasr', fmt: 'Zalasr', opcode: OPCODE.AMO, funct5: '00110', funct3: '011', isLoad: true },
+  'sb.rl': { isa: 'Zalasr',    fmt: 'Zalasr', opcode: OPCODE.AMO, funct5: '00111', funct3: '000', isLoad: false },
+  'sh.rl': { isa: 'Zalasr',    fmt: 'Zalasr', opcode: OPCODE.AMO, funct5: '00111', funct3: '001', isLoad: false },
+  'sw.rl': { isa: 'Zalasr',    fmt: 'Zalasr', opcode: OPCODE.AMO, funct5: '00111', funct3: '010', isLoad: false },
+  'sd.rl': { isa: 'RV64Zalasr', fmt: 'Zalasr', opcode: OPCODE.AMO, funct5: '00111', funct3: '011', isLoad: false },
 }
 
 // Zawrs (wait-on-reservation-set) instruction set
@@ -1377,17 +1413,24 @@ function v6(hex) {
 // almost everything, but 'w' for the narrowing family (vnsrl.wv/wx/wi
 // etc.), since their vs2 operand is conceptually double-width
 function defVArith(funct6hex, name, variants,
-  { immType = 'i', prefix = 'v', cats = { v: 'IVV', x: 'IVX', i: 'IVI' }, swap } = {}) {
+  { immType = 'i', prefix = 'v', cats = { v: 'IVV', x: 'IVX', i: 'IVI' }, swap, isa = 'V', target = ISA_V } = {}) {
   const funct6 = v6(funct6hex);
   for (const variant of variants) {
-    ISA_V[`${name}.${prefix}${variant}`] = {
-      isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V,
+    target[`${name}.${prefix}${variant}`] = {
+      isa, fmt: 'V-arith', opcode: OPCODE.OP_V,
       funct6, funct3: V_CAT[cats[variant]],
       immType: variant === 'i' ? immType : undefined,
       swap,
     };
   }
 }
+
+// Unratified/draft vector extensions (Zvzip, Zvabd, Zvdot4a,
+// Zvfofp4min/8min, plus - on the separate OP_V_CRYPTO opcode - the draft
+// dot-product family) - kept in their own object so they feed the shared
+// dispatch tables (ISA_OP_V_ARITH/ISA_OP_V_CRYPTO) without leaking into
+// ISA_Subsets.V, which is meant to list ratified V instructions only
+export const ISA_V_UNRATIFIED = {};
 
 // Category pair used by the OPMVV/OPMVX (integer-extended) instructions,
 // which never have an immediate ("i") variant
@@ -1714,10 +1757,40 @@ ISA_V['vfncvtbf16.f.f.w'] = { isa: 'Zvfbfmin', fmt: 'V-arith', opcode: OPCODE.OP
 // swapped order as the rest of the multiply-accumulate family
 defVArith('3b', 'vfwmaccbf16', 'vf', { cats: FV_CATS, swap: true });
 
+// Zvzip (unratified draft): register/element interleave & pairing ops
+const V_ZVZIP_UNARY = { 'vunzipe.v': '01011', 'vunzipo.v': '01111' };
+for (const [name, sel] of Object.entries(V_ZVZIP_UNARY)) {
+  ISA_V_UNRATIFIED[name] = { isa: 'Zvzip', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.MVV, vs1Fixed: sel };
+}
+defVArith('3e', 'vzip', 'v', { cats: MV_CATS, isa: 'Zvzip', target: ISA_V_UNRATIFIED });
+defVArith('0f', 'vpaire', 'v', { isa: 'Zvzip', target: ISA_V_UNRATIFIED });
+defVArith('0f', 'vpairo', 'v', { cats: MV_CATS, isa: 'Zvzip', target: ISA_V_UNRATIFIED });
+
+// Zvabd (unratified draft): absolute-difference family
+ISA_V_UNRATIFIED['vabs.v'] = { isa: 'Zvabd', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.MVV, vs1Fixed: '10000' };
+defVArith('11', 'vabd', 'v', { cats: MV_CATS, isa: 'Zvabd', target: ISA_V_UNRATIFIED });
+defVArith('13', 'vabdu', 'v', { cats: MV_CATS, isa: 'Zvabd', target: ISA_V_UNRATIFIED });
+defVArith('15', 'vwabda', 'v', { cats: MV_CATS, isa: 'Zvabd', target: ISA_V_UNRATIFIED });
+defVArith('16', 'vwabdau', 'v', { cats: MV_CATS, isa: 'Zvabd', target: ISA_V_UNRATIFIED });
+
+// Zvdot4a (unratified draft): 4-element dot-product-and-accumulate family
+defVArith('2c', 'vdot4a', 'vx', { cats: MV_CATS, isa: 'Zvdot4a', target: ISA_V_UNRATIFIED });
+defVArith('28', 'vdot4au', 'vx', { cats: MV_CATS, isa: 'Zvdot4a', target: ISA_V_UNRATIFIED });
+defVArith('2a', 'vdot4asu', 'vx', { cats: MV_CATS, isa: 'Zvdot4a', target: ISA_V_UNRATIFIED });
+defVArith('2e', 'vdot4aus', 'x', { cats: MV_CATS, isa: 'Zvdot4a', target: ISA_V_UNRATIFIED });
+
+// Zvfofp4min/Zvfofp8min (unratified drafts): minifloat conversion ops,
+// funct6=0x12 alongside the ratified int<->float/BF16 conversion families
+ISA_V_UNRATIFIED['vfext.vf2'] = { isa: 'Zvfofp4min', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.MVV, vs1Fixed: '10110' };
+ISA_V_UNRATIFIED['vfncvt.f.f.q'] = { isa: 'Zvfofp8min', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.FVV, vs1Fixed: '11001' };
+ISA_V_UNRATIFIED['vfncvt.sat.f.f.q'] = { isa: 'Zvfofp8min', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.FVV, vs1Fixed: '11011' };
+ISA_V_UNRATIFIED['vfncvtbf16.sat.f.f.w'] = { isa: 'Zvfofp8min', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.FVV, vs1Fixed: '11111' };
+
 // Build the funct3 -> funct6 -> mnemonic dispatch table (nested one level
-// further, by vm or vs1Fixed, only where a funct6 code needs it)
+// further, by vm or vs1Fixed, only where a funct6 code needs it) - covers
+// both ratified V and the unratified vector drafts above
 export const ISA_OP_V_ARITH = {};
-for (const [name, e] of Object.entries(ISA_V)) {
+for (const [name, e] of Object.entries({ ...ISA_V, ...ISA_V_UNRATIFIED })) {
   if (e.fmt !== 'V-arith') {
     continue;
   }
@@ -1843,6 +1916,9 @@ export const ISA_OP = {
   // Zbkx
   [ISA_Zbkx['xperm4'].funct7 + ISA_Zbkx['xperm4'].funct3]: 'xperm4',
   [ISA_Zbkx['xperm8'].funct7 + ISA_Zbkx['xperm8'].funct3]: 'xperm8',
+  // Zbp (unratified)
+  [ISA_Zbp['xperm16'].funct7 + ISA_Zbp['xperm16'].funct3]: 'xperm16',
+  [ISA_Zbp['xperm32'].funct7 + ISA_Zbp['xperm32'].funct3]: 'xperm32',
   // Zbkb
   [ISA_Zbkb['pack'].funct7  + ISA_Zbkb['pack'].funct3]:  'pack',
   [ISA_Zbkb['packh'].funct7 + ISA_Zbkb['packh'].funct3]: 'packh',
@@ -2176,6 +2252,19 @@ export const ISA_AMO = {
   [ISA_Zabha['amominu.h'].funct5 + ISA_Zabha['amominu.h'].funct3]: 'amominu.h',
   [ISA_Zabha['amomaxu.h'].funct5 + ISA_Zabha['amomaxu.h'].funct3]: 'amomaxu.h',
   [ISA_Zabha['amocas.h'].funct5  + ISA_Zabha['amocas.h'].funct3]:  'amocas.h',
+}
+
+// Zalasr's own funct5+funct3 dispatch table, kept separate from ISA_AMO
+// since it's consulted by the dedicated #decodeZalasr/#encodeZalasr path
+export const ISA_ZALASR = {
+  [ISA_Zalasr['lb.aq'].funct5 + ISA_Zalasr['lb.aq'].funct3]: 'lb.aq',
+  [ISA_Zalasr['lh.aq'].funct5 + ISA_Zalasr['lh.aq'].funct3]: 'lh.aq',
+  [ISA_Zalasr['lw.aq'].funct5 + ISA_Zalasr['lw.aq'].funct3]: 'lw.aq',
+  [ISA_Zalasr['ld.aq'].funct5 + ISA_Zalasr['ld.aq'].funct3]: 'ld.aq',
+  [ISA_Zalasr['sb.rl'].funct5 + ISA_Zalasr['sb.rl'].funct3]: 'sb.rl',
+  [ISA_Zalasr['sh.rl'].funct5 + ISA_Zalasr['sh.rl'].funct3]: 'sh.rl',
+  [ISA_Zalasr['sw.rl'].funct5 + ISA_Zalasr['sw.rl'].funct3]: 'sw.rl',
+  [ISA_Zalasr['sd.rl'].funct5 + ISA_Zalasr['sd.rl'].funct3]: 'sd.rl',
 }
 
 export const ISA_LOAD_FP = {
@@ -3012,7 +3101,9 @@ export const ISA = Object.assign({},
   ISA_Zawrs, ISA_Zacas, ISA_Zabha, ISA_Zfh, ISA_Zfhmin, ISA_Zfbfmin, ISA_Zfa,
   ISA_Smrnmi, ISA_Svinval, ISA_Zimop, ISA_Zicfiss, ISA_H,
   ISA_S, ISA_Sdext, ISA_Ssctr, ISA_V,
-  ISA_System);
+  ISA_System,
+  // Unratified/draft extensions (see ISA_UnratifiedSubsets below)
+  ISA_Zbp, ISA_Zalasr, ISA_V_UNRATIFIED);
 
   /* Hierarchy of instructions per ISA subset */
 export const ISA_Subsets = {
