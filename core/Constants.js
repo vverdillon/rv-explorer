@@ -2278,8 +2278,14 @@ export const P_FIELD_POS = {
   rd: [11, 7], rs1: [19, 15], rs2: [24, 20],
   uimm3: [22, 20], uimm4: [23, 20], uimm5: [24, 20], uimm6: [25, 20],
   imm8: [23, 16], imm10: [24, 15],
+  // Register-pair operands (rv32_p): only 4 raw bits (a pair index 0-15),
+  // one bit narrower than a full register field - the omitted LSB is
+  // implicitly 0, so the actual register number is the pair index doubled
+  // (0,2,4,...,30), naming the even half of an (even,odd) register pair
+  rdp: [11, 8], rs1p: [19, 16], rs2p: [24, 21],
 };
 export const P_FIELD_SIGNED = { imm8: true, imm10: true };
+export const P_REGPAIR_FIELDS = new Set(['rdp', 'rs1p', 'rs2p']);
 
 function defPMixed(name, isa, matchHex, maskHex, operands) {
   ISA_P[name] = {
@@ -2349,6 +2355,253 @@ defPMixed('shl', 'RV64P', '0xae00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
 defPMixed('shlr', 'RV64P', '0xbe00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
 defPMixed('srari', 'RV64P', '0xd400401b', '0xfc00707f', ['rd', 'rs1', 'uimm6']);
 defPMixed('usati', 'RV64P', '0xa400401b', '0xfc00707f', ['rd', 'rs1', 'uimm6']);
+
+
+// rv32_p's register-pair operand family: same defPMixed mechanism as the
+// phase-3 mixed-shape instructions above, just with the 3 new rdp/rs1p/
+// rs2p operand types (register pairs) mixed in alongside plain
+// registers and the same zero-extended shift-immediate widths
+//
+// NOTE: rv32_p's "addd"/"subd" mnemonics are genuinely unimplementable
+// here - they collide with the already-ratified RV128I addd/subd (a
+// different instruction entirely, on OP-64), and this codebase's ISA
+// lookup is a single flat namespace. The ratified instruction stays
+// canonical; the draft's colliding names are skipped rather than
+// silently renamed away from what the spec actually calls them.
+defPMixed('mqrwacc', 'RV32P', '0x7e00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('mqwacc', 'RV32P', '0x7a00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('nclip', 'RV32P', '0x6e00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('nclipi', 'RV32P', '0x6400c01b', '0xfc00f07f', ['rd', 'rs1p', 'uimm6']);
+defPMixed('nclipiu', 'RV32P', '0x2400c01b', '0xfc00f07f', ['rd', 'rs1p', 'uimm6']);
+defPMixed('nclipr', 'RV32P', '0x7e00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('nclipri', 'RV32P', '0x7400c01b', '0xfc00f07f', ['rd', 'rs1p', 'uimm6']);
+defPMixed('nclipriu', 'RV32P', '0x3400c01b', '0xfc00f07f', ['rd', 'rs1p', 'uimm6']);
+defPMixed('nclipru', 'RV32P', '0x3e00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('nclipu', 'RV32P', '0x2e00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('nsra', 'RV32P', '0x4e00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('nsrai', 'RV32P', '0x4400c01b', '0xfc00f07f', ['rd', 'rs1p', 'uimm6']);
+defPMixed('nsrar', 'RV32P', '0x5e00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('nsrari', 'RV32P', '0x5400c01b', '0xfc00f07f', ['rd', 'rs1p', 'uimm6']);
+defPMixed('nsrl', 'RV32P', '0xe00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('nsrli', 'RV32P', '0x400c01b', '0xfc00f07f', ['rd', 'rs1p', 'uimm6']);
+defPMixed('paadd.db', 'RV32P', '0x9c00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('paadd.dh', 'RV32P', '0x9800601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('paadd.dw', 'RV32P', '0x9a00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('paaddu.db', 'RV32P', '0xbc00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('paaddu.dh', 'RV32P', '0xb800601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('paaddu.dw', 'RV32P', '0xba00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('paas.dhx', 'RV32P', '0x9810e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pabd.db', 'RV32P', '0xcc00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pabd.dh', 'RV32P', '0xc800601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pabdu.db', 'RV32P', '0xec00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pabdu.dh', 'RV32P', '0xe800601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('padd.db', 'RV32P', '0x8400601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('padd.dbs', 'RV32P', '0x1c00601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('padd.dh', 'RV32P', '0x8000601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('padd.dhs', 'RV32P', '0x1800601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('padd.dw', 'RV32P', '0x8200601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('padd.dws', 'RV32P', '0x1a00601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('pas.dhx', 'RV32P', '0x8010e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pasa.dhx', 'RV32P', '0x9c10e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pasub.db', 'RV32P', '0xdc00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pasub.dh', 'RV32P', '0xd800601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pasub.dw', 'RV32P', '0xda00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pasubu.db', 'RV32P', '0xfc00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pasubu.dh', 'RV32P', '0xf800601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pasubu.dw', 'RV32P', '0xfa00601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pli.db', 'RV32P', '0x3400201b', '0xff00f0ff', ['rdp', 'imm8']);
+defPMixed('pli.dh', 'RV32P', '0x3000201b', '0xfe0070ff', ['rdp', 'imm10']);
+defPMixed('plui.dh', 'RV32P', '0x7000201b', '0xfe0070ff', ['rdp', 'imm10']);
+defPMixed('pm2wadd.h', 'RV32P', '0x600209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2wadd.hx', 'RV32P', '0x1600209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2wadda.h', 'RV32P', '0xe00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2wadda.hx', 'RV32P', '0x1e00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2waddasu.h', 'RV32P', '0x6e00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2waddau.h', 'RV32P', '0x2e00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2waddsu.h', 'RV32P', '0x6600209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2waddu.h', 'RV32P', '0x2600209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2wsub.h', 'RV32P', '0x4600209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2wsub.hx', 'RV32P', '0x5600209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2wsuba.h', 'RV32P', '0x4e00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pm2wsuba.hx', 'RV32P', '0x5e00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pmax.db', 'RV32P', '0xf410e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmax.dh', 'RV32P', '0xf010e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmax.dw', 'RV32P', '0xf210e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmaxu.db', 'RV32P', '0xfc10e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmaxu.dh', 'RV32P', '0xf810e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmaxu.dw', 'RV32P', '0xfa10e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmin.db', 'RV32P', '0xe410e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmin.dh', 'RV32P', '0xe010e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmin.dw', 'RV32P', '0xe210e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pminu.db', 'RV32P', '0xec10e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pminu.dh', 'RV32P', '0xe810e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pminu.dw', 'RV32P', '0xea10e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmqrwacc.h', 'RV32P', '0x7c00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pmqwacc.h', 'RV32P', '0x7800209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pmseq.db', 'RV32P', '0xc410e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmseq.dh', 'RV32P', '0xc010e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmseq.dw', 'RV32P', '0xc210e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmslt.db', 'RV32P', '0xd410e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmslt.dh', 'RV32P', '0xd010e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmslt.dw', 'RV32P', '0xd210e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmsltu.db', 'RV32P', '0xdc10e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmsltu.dh', 'RV32P', '0xd810e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pmsltu.dw', 'RV32P', '0xda10e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pnclip.bs', 'RV32P', '0x6800c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnclip.hs', 'RV32P', '0x6a00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnclipi.b', 'RV32P', '0x6100c01b', '0xff00f07f', ['rd', 'rs1p', 'uimm4']);
+defPMixed('pnclipi.h', 'RV32P', '0x6200c01b', '0xfe00f07f', ['rd', 'rs1p', 'uimm5']);
+defPMixed('pnclipiu.b', 'RV32P', '0x2100c01b', '0xff00f07f', ['rd', 'rs1p', 'uimm4']);
+defPMixed('pnclipiu.h', 'RV32P', '0x2200c01b', '0xfe00f07f', ['rd', 'rs1p', 'uimm5']);
+defPMixed('pnclipr.bs', 'RV32P', '0x7800c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnclipr.hs', 'RV32P', '0x7a00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnclipri.b', 'RV32P', '0x7100c01b', '0xff00f07f', ['rd', 'rs1p', 'uimm4']);
+defPMixed('pnclipri.h', 'RV32P', '0x7200c01b', '0xfe00f07f', ['rd', 'rs1p', 'uimm5']);
+defPMixed('pnclipriu.b', 'RV32P', '0x3100c01b', '0xff00f07f', ['rd', 'rs1p', 'uimm4']);
+defPMixed('pnclipriu.h', 'RV32P', '0x3200c01b', '0xfe00f07f', ['rd', 'rs1p', 'uimm5']);
+defPMixed('pnclipru.bs', 'RV32P', '0x3800c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnclipru.hs', 'RV32P', '0x3a00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnclipu.bs', 'RV32P', '0x2800c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnclipu.hs', 'RV32P', '0x2a00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnsra.bs', 'RV32P', '0x4800c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnsra.hs', 'RV32P', '0x4a00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnsrai.b', 'RV32P', '0x4100c01b', '0xff00f07f', ['rd', 'rs1p', 'uimm4']);
+defPMixed('pnsrai.h', 'RV32P', '0x4200c01b', '0xfe00f07f', ['rd', 'rs1p', 'uimm5']);
+defPMixed('pnsrar.bs', 'RV32P', '0x5800c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnsrar.hs', 'RV32P', '0x5a00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnsrari.b', 'RV32P', '0x5100c01b', '0xff00f07f', ['rd', 'rs1p', 'uimm4']);
+defPMixed('pnsrari.h', 'RV32P', '0x5200c01b', '0xfe00f07f', ['rd', 'rs1p', 'uimm5']);
+defPMixed('pnsrl.bs', 'RV32P', '0x800c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnsrl.hs', 'RV32P', '0xa00c01b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('pnsrli.b', 'RV32P', '0x100c01b', '0xff00f07f', ['rd', 'rs1p', 'uimm4']);
+defPMixed('pnsrli.h', 'RV32P', '0x200c01b', '0xfe00f07f', ['rd', 'rs1p', 'uimm5']);
+defPMixed('ppaire.db', 'RV32P', '0x8000e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('ppaire.dh', 'RV32P', '0x8200e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('ppaireo.db', 'RV32P', '0x9000e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('ppaireo.dh', 'RV32P', '0x9200e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('ppairo.db', 'RV32P', '0xb000e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('ppairo.dh', 'RV32P', '0xb200e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('ppairoe.db', 'RV32P', '0xa000e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('ppairoe.dh', 'RV32P', '0xa200e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('predsum.dbs', 'RV32P', '0x1c00401b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('predsum.dhs', 'RV32P', '0x1800401b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('predsumu.dbs', 'RV32P', '0x3c00401b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('predsumu.dhs', 'RV32P', '0x3800401b', '0xfe00f07f', ['rd', 'rs1p', 'rs2']);
+defPMixed('psa.dhx', 'RV32P', '0x8410e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psabs.db', 'RV32P', '0x6470601b', '0xfff0f0ff', ['rdp', 'rs1p']);
+defPMixed('psabs.dh', 'RV32P', '0x6070601b', '0xfff0f0ff', ['rdp', 'rs1p']);
+defPMixed('psadd.db', 'RV32P', '0x9400601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psadd.dh', 'RV32P', '0x9000601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psadd.dw', 'RV32P', '0x9200601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psaddu.db', 'RV32P', '0xb400601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psaddu.dh', 'RV32P', '0xb000601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psaddu.dw', 'RV32P', '0xb200601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psas.dhx', 'RV32P', '0x9010e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psati.dh', 'RV32P', '0x6100e01b', '0xff00f0ff', ['rdp', 'rs1p', 'uimm4']);
+defPMixed('psati.dw', 'RV32P', '0x6200e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'uimm5']);
+defPMixed('psext.dh.b', 'RV32P', '0x6040601b', '0xfff0f0ff', ['rdp', 'rs1p']);
+defPMixed('psext.dw.b', 'RV32P', '0x6240601b', '0xfff0f0ff', ['rdp', 'rs1p']);
+defPMixed('psext.dw.h', 'RV32P', '0x6250601b', '0xfff0f0ff', ['rdp', 'rs1p']);
+defPMixed('psh1add.dh', 'RV32P', '0xa010601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psh1add.dw', 'RV32P', '0xa210601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psll.dbs', 'RV32P', '0xc00601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psll.dhs', 'RV32P', '0x800601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psll.dws', 'RV32P', '0xa00601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('pslli.db', 'RV32P', '0x80601b', '0xff80f0ff', ['rdp', 'rs1p', 'uimm3']);
+defPMixed('pslli.dh', 'RV32P', '0x100601b', '0xff00f0ff', ['rdp', 'rs1p', 'uimm4']);
+defPMixed('pslli.dw', 'RV32P', '0x200601b', '0xfe00f0ff', ['rdp', 'rs1p', 'uimm5']);
+defPMixed('psra.dbs', 'RV32P', '0x4c00e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psra.dhs', 'RV32P', '0x4800e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psra.dws', 'RV32P', '0x4a00e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psrai.db', 'RV32P', '0x4080e01b', '0xff80f0ff', ['rdp', 'rs1p', 'uimm3']);
+defPMixed('psrai.dh', 'RV32P', '0x4100e01b', '0xff00f0ff', ['rdp', 'rs1p', 'uimm4']);
+defPMixed('psrai.dw', 'RV32P', '0x4200e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'uimm5']);
+defPMixed('psrari.dh', 'RV32P', '0x5100e01b', '0xff00f0ff', ['rdp', 'rs1p', 'uimm4']);
+defPMixed('psrari.dw', 'RV32P', '0x5200e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'uimm5']);
+defPMixed('psrl.dbs', 'RV32P', '0xc00e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psrl.dhs', 'RV32P', '0x800e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psrl.dws', 'RV32P', '0xa00e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psrli.db', 'RV32P', '0x80e01b', '0xff80f0ff', ['rdp', 'rs1p', 'uimm3']);
+defPMixed('psrli.dh', 'RV32P', '0x100e01b', '0xff00f0ff', ['rdp', 'rs1p', 'uimm4']);
+defPMixed('psrli.dw', 'RV32P', '0x200e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'uimm5']);
+defPMixed('pssa.dhx', 'RV32P', '0x9410e01b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pssh1sadd.dh', 'RV32P', '0xb010601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pssh1sadd.dw', 'RV32P', '0xb210601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pssha.dhs', 'RV32P', '0x6800601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('pssha.dws', 'RV32P', '0x6a00601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psshar.dhs', 'RV32P', '0x7800601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psshar.dws', 'RV32P', '0x7a00601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psshl.dhs', 'RV32P', '0x2800601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psshl.dws', 'RV32P', '0x2a00601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psshlr.dhs', 'RV32P', '0x3800601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psshlr.dws', 'RV32P', '0x3a00601b', '0xfe00f0ff', ['rdp', 'rs1p', 'rs2']);
+defPMixed('psslai.dh', 'RV32P', '0x5100601b', '0xff00f0ff', ['rdp', 'rs1p', 'uimm4']);
+defPMixed('psslai.dw', 'RV32P', '0x5200601b', '0xfe00f0ff', ['rdp', 'rs1p', 'uimm5']);
+defPMixed('pssub.db', 'RV32P', '0xd400601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pssub.dh', 'RV32P', '0xd000601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pssub.dw', 'RV32P', '0xd200601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pssubu.db', 'RV32P', '0xf400601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pssubu.dh', 'RV32P', '0xf000601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pssubu.dw', 'RV32P', '0xf200601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psub.db', 'RV32P', '0xc400601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psub.dh', 'RV32P', '0xc000601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('psub.dw', 'RV32P', '0xc200601b', '0xfe10f0ff', ['rdp', 'rs1p', 'rs2p']);
+defPMixed('pusati.dh', 'RV32P', '0x2100e01b', '0xff00f0ff', ['rdp', 'rs1p', 'uimm4']);
+defPMixed('pusati.dw', 'RV32P', '0x2200e01b', '0xfe00f0ff', ['rdp', 'rs1p', 'uimm5']);
+defPMixed('pwadd.b', 'RV32P', '0x400209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwadd.h', 'RV32P', '0x209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwadda.b', 'RV32P', '0xc00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwadda.h', 'RV32P', '0x800209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwaddau.b', 'RV32P', '0x1c00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwaddau.h', 'RV32P', '0x1800209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwaddu.b', 'RV32P', '0x1400209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwaddu.h', 'RV32P', '0x1000209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmacc.h', 'RV32P', '0x2800209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmaccsu.h', 'RV32P', '0x6800209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmaccu.h', 'RV32P', '0x3800209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmul.b', 'RV32P', '0x2400209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmul.h', 'RV32P', '0x2000209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmulsu.b', 'RV32P', '0x6400209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmulsu.h', 'RV32P', '0x6000209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmulu.b', 'RV32P', '0x3400209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwmulu.h', 'RV32P', '0x3000209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsla.bs', 'RV32P', '0x4800201b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsla.hs', 'RV32P', '0x4a00201b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwslai.b', 'RV32P', '0x4100201b', '0xff0070ff', ['rdp', 'rs1', 'uimm4']);
+defPMixed('pwslai.h', 'RV32P', '0x4200201b', '0xfe0070ff', ['rdp', 'rs1', 'uimm5']);
+defPMixed('pwsll.bs', 'RV32P', '0x800201b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsll.hs', 'RV32P', '0xa00201b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwslli.b', 'RV32P', '0x100201b', '0xff0070ff', ['rdp', 'rs1', 'uimm4']);
+defPMixed('pwslli.h', 'RV32P', '0x200201b', '0xfe0070ff', ['rdp', 'rs1', 'uimm5']);
+defPMixed('pwsub.b', 'RV32P', '0x4400209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsub.h', 'RV32P', '0x4000209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsuba.b', 'RV32P', '0x4c00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsuba.h', 'RV32P', '0x4800209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsubau.b', 'RV32P', '0x5c00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsubau.h', 'RV32P', '0x5800209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsubu.b', 'RV32P', '0x5400209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('pwsubu.h', 'RV32P', '0x5000209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+// 'subd' skipped - see the "addd"/"subd" note above
+defPMixed('wadd', 'RV32P', '0x200209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wadda', 'RV32P', '0xa00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('waddau', 'RV32P', '0x1a00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('waddu', 'RV32P', '0x1200209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wmacc', 'RV32P', '0x2a00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wmaccsu', 'RV32P', '0x6a00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wmaccu', 'RV32P', '0x3a00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wmul', 'RV32P', '0x2200209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wmulsu', 'RV32P', '0x6200209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wmulu', 'RV32P', '0x3200209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wsla', 'RV32P', '0x4e00201b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wslai', 'RV32P', '0x4400201b', '0xfc0070ff', ['rdp', 'rs1', 'uimm6']);
+defPMixed('wsll', 'RV32P', '0xe00201b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wslli', 'RV32P', '0x400201b', '0xfc0070ff', ['rdp', 'rs1', 'uimm6']);
+defPMixed('wsub', 'RV32P', '0x4200209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wsuba', 'RV32P', '0x4a00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wsubau', 'RV32P', '0x5a00209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wsubu', 'RV32P', '0x5200209b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wzip16p', 'RV32P', '0x7a00201b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
+defPMixed('wzip8p', 'RV32P', '0x7800201b', '0xfe0070ff', ['rdp', 'rs1', 'rs2']);
 
 export const ISA_P_MIXED = [];
 for (const [name, e] of Object.entries(ISA_P)) {
@@ -3610,8 +3863,6 @@ export const ISA_Subsets = {
 // and why (some drafts, or parts of them, are skipped with a reason
 // noted at their definition site).
 export const ISA_UnratifiedSubsets = {
-  // P (packed-SIMD/DSP): still in progress - only its OP-32 (no register-
-  // pair) packed arithmetic is implemented so far
   P: ISA_P,
   Zbp: ISA_Zbp,
   Zalasr: ISA_Zalasr,

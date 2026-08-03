@@ -10,7 +10,7 @@ import { BASE, XLEN_MASK, FLI_STRINGS,
   FIELDS, OPCODE, C_OPCODE, REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
   ISA_OP, ISA_OP_32, ISA_OP_64, ISA_OP_BS, ISA_OP_IMM, ISA_OP_IMM_32, ISA_OP_IMM_64,
   ISA_LOAD, ISA_STORE, ISA_BRANCH, ISA_MISC_MEM, ISA_SYSTEM, ISA_AMO, ISA_ZALASR,
-  ISA_P_MIXED, P_FIELD_POS, P_FIELD_SIGNED,
+  ISA_P_MIXED, P_FIELD_POS, P_FIELD_SIGNED, P_REGPAIR_FIELDS,
   ISA_LOAD_FP, ISA_STORE_FP, ISA_OP_FP,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
   ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP, ISA_C2_ZCMP,
@@ -118,13 +118,14 @@ export class Decoder {
           this.#decodeOP_IMM();
           break;
         case OPCODE.OP_IMM_32: {
-          // P (unratified draft) claims funct3=010/100 on this opcode for a
-          // mix of shapes (real rs2, several zero-extended shift immediate
-          // widths, wide load-immediates with no rs1) that doesn't fit any
-          // existing fmt - no ratified instruction uses these funct3 values
-          // here, so it's safe to check first
+          // P (unratified draft) claims funct3=010/100/110 on this opcode
+          // for a mix of shapes (real rs2, several zero-extended shift
+          // immediate widths, wide load-immediates with no rs1, register-
+          // pair operands) that doesn't fit any existing fmt - no ratified
+          // instruction uses these funct3 values here, so it's safe to
+          // check first
           const f3 = getBits(this.#bin, FIELDS.funct3.pos);
-          if (f3 === '010' || f3 === '100') {
+          if (f3 === '010' || f3 === '100' || f3 === '110') {
             this.#decodeP();
           } else {
             this.#decodeOP_IMM();
@@ -580,6 +581,15 @@ export class Decoder {
       if (opType === 'rd' || opType === 'rs1' || opType === 'rs2') {
         const reg = decReg(raw);
         return new Frag(opType === 'rd' ? FRAG.RD : opType === 'rs1' ? FRAG.RS1 : FRAG.RS2,
+          reg, raw, opType);
+      }
+      if (P_REGPAIR_FIELDS.has(opType)) {
+        // Register-pair operand: raw is only a 4-bit pair index - the
+        // implicit, un-encoded LSB is 0, so the actual (even) register
+        // number is the pair index doubled
+        const reg = 'x' + (parseInt(raw, BASE.bin) * 2);
+        const base = opType.slice(0, -1); // 'rdp' -> 'rd', etc.
+        return new Frag(base === 'rd' ? FRAG.RD : base === 'rs1' ? FRAG.RS1 : FRAG.RS2,
           reg, raw, opType);
       }
       const imm = decImm(raw, P_FIELD_SIGNED[opType] === true);

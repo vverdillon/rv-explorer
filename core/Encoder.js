@@ -9,7 +9,7 @@
 import { BASE, XLEN_MASK, FLI_STRINGS, FIELDS, OPCODE, ISA,
   REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
   V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vParseSegName, V_CAT,
-  P_FIELD_POS
+  P_FIELD_POS, P_REGPAIR_FIELDS
 } from './Constants.js'
 
 import { COPTS_ISA } from './Config.js'
@@ -368,9 +368,18 @@ export class Encoder {
     const bin = inst.match.split('');
     inst.operands.forEach((opType, i) => {
       const [hi, lo] = P_FIELD_POS[opType];
-      const raw = (opType === 'rd' || opType === 'rs1' || opType === 'rs2')
-        ? encReg(this.#opr[i])
-        : encImm(this.#opr[i], hi - lo + 1);
+      let raw;
+      if (opType === 'rd' || opType === 'rs1' || opType === 'rs2') {
+        raw = encReg(this.#opr[i]);
+      } else if (P_REGPAIR_FIELDS.has(opType)) {
+        const regBits = encReg(this.#opr[i]);
+        if (regBits[4] !== '0') {
+          throw `Detected ${this.#mne} with register pair operand "${this.#opr[i]}" - odd registers cannot start a pair`;
+        }
+        raw = regBits.substring(0, 4);
+      } else {
+        raw = encImm(this.#opr[i], hi - lo + 1);
+      }
       for (let b = 0; b < raw.length; b++) {
         bin[31 - hi + b] = raw[b];
       }
