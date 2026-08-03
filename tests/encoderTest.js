@@ -193,6 +193,17 @@ function enc_zicsr_system_csrrci() {
     assertEq(abiInst.bin, inst.bin);
 }
 
+function enc_zicsr_system_csrrw_hgeip() {
+    // Regression: hgeip was wrongly 0xe07 instead of the real 0xe12
+    let inst = new Instruction('csrrw x1, hgeip, x2');
+    assertEq(inst.hex, 'e12110f3');
+}
+
+function enc_zicsr_system_csrrw_mnscratch() {
+    let inst = new Instruction('csrrw x1, mnscratch, x2');
+    assertEq(inst.hex, '740110f3');
+}
+
 /*
  * M extension
  */
@@ -1178,6 +1189,8 @@ batchTests('Encoder Tests', [
     ['Enc - Zifencei - MISC-MEM  - fence.i', enc_zifencei_miscmem_fencei],
     ['Enc - Zicsr    - SYSTEM    - csrrw', enc_zicsr_system_csrrw],
     ['Enc - Zicsr    - SYSTEM    - csrrci', enc_zicsr_system_csrrci],
+    ['Enc - Zicsr    - SYSTEM    - csrrw - [hgeip]', enc_zicsr_system_csrrw_hgeip],
+    ['Enc - Zicsr    - SYSTEM    - csrrw - [mnscratch]', enc_zicsr_system_csrrw_mnscratch],
     ['Enc - RV32M    - OP        - mulhsu', enc_rv32m_op_mulhsu],
     ['Enc - RV64M    - OP-32     - remw', enc_rv64m_op32_remw],
     ['Enc - RV128M   - OP-64     - divud', enc_rv128m_op64_divud],

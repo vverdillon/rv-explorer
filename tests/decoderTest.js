@@ -192,6 +192,19 @@ function dec_zicsr_system_csrrwi() {
     assertEq(instAbi.asm, 'csrrwi ra, mhartid, 23');
 }
 
+function dec_zicsr_system_csrrs_hgeip() {
+    // Regression: hgeip was wrongly 0xe07 (collided with nothing, just
+    // incorrect) instead of the real 0xe12 per the official CSR address
+    // table
+    let inst = new Instruction('e12022f3');
+    assertEq(inst.asm, 'csrrs x5, hgeip, x0');
+}
+
+function dec_zicsr_system_csrrwi_vtype() {
+    let inst = new Instruction('c212d1f3');
+    assertEq(inst.asm, 'csrrwi x3, vtype, 5');
+}
+
 /*
  * M extension
  */
@@ -1327,6 +1340,8 @@ batchTests('Decoder Tests', [
     ['Dec - Zifencei - MISC-MEM  - fence.i', dec_zifencei_miscmem_fencei],
     ['Dec - Zicsr    - SYSTEM    - csrrs', dec_zicsr_system_csrrs],
     ['Dec - Zicsr    - SYSTEM    - csrrwi', dec_zicsr_system_csrrwi],
+    ['Dec - Zicsr    - SYSTEM    - csrrs - [hgeip]', dec_zicsr_system_csrrs_hgeip],
+    ['Dec - Zicsr    - SYSTEM    - csrrwi - [vtype]', dec_zicsr_system_csrrwi_vtype],
     ['Dec - RV32M    - OP        - divu', dec_rv32m_op_divu],
     ['Dec - RV64M    - OP-32     - mulw', dec_rv64m_op32_mulw],
     ['Dec - RV128M   - OP-64     - remd', dec_rv128m_op64_remd],
