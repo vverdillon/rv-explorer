@@ -1970,6 +1970,18 @@ export const ISA_OP_BS = {
   [ISA_Zkne['aes32esmi'].funct7base + ISA_Zkne['aes32esmi'].funct3]: 'aes32esmi',
 }
 
+// P's OP-IMM scalar unary ops (cls/abs share funct3=001 with clz/ctz/
+// sext.b/sext.h; rev/rev16/rev.rv32 share funct3=101 with rev8/brev8) -
+// registered here so the funct12 values exist before being referenced in
+// ISA_OP_IMM's nested dispatch below
+const ISA_P_OP_IMM = {
+  cls:        { isa: 'P',      fmt: 'I-type', funct12: '011000000011', funct3: '001', opcode: OPCODE.OP_IMM },
+  abs:        { isa: 'P',      fmt: 'I-type', funct12: '011000000111', funct3: '001', opcode: OPCODE.OP_IMM },
+  rev:        { isa: 'RV64P',  fmt: 'I-type', funct12: '011010111111', funct3: '101', opcode: OPCODE.OP_IMM },
+  rev16:      { isa: 'RV64P',  fmt: 'I-type', funct12: '011010110000', funct3: '101', opcode: OPCODE.OP_IMM },
+  'rev.rv32': { isa: 'RV32P',  fmt: 'I-type', funct12: '011010011111', funct3: '101', opcode: OPCODE.OP_IMM },
+}
+
 // P (packed-SIMD/DSP, unratified/draft) - the bulk of its non-register-pair
 // packed arithmetic (OP-32 opcode, 8 funct3 "pages" x 32 funct7 "rows")
 // fits the exact same R-type funct7+funct3 dispatch shape already used for
@@ -2250,6 +2262,8 @@ export const ISA_OP_32 = {
   // Zbkb
   [ISA_Zbkb['packw'].funct7 + ISA_Zbkb['packw'].funct3]: 'packw',
 }
+Object.assign(ISA_P, ISA_P_OP_IMM);
+
 // P's OP-32 packed arithmetic plugs into the same funct7+funct3 dispatch
 // generically, given its scale (245 entries)
 for (const [name, e] of Object.entries(ISA_P)) {
@@ -2329,6 +2343,9 @@ export const ISA_OP_IMM = {
       [ISA_Zbb['cpop'].funct12.substring(6)]:    'cpop',
       [ISA_Zbb['sext.b'].funct12.substring(6)]:  'sext.b',
       [ISA_Zbb['sext.h'].funct12.substring(6)]:  'sext.h',
+      // P (unratified)
+      [ISA_P['cls'].funct12.substring(6)]: 'cls',
+      [ISA_P['abs'].funct12.substring(6)]: 'abs',
     },
     [ISA_Zbkb['zip'].funct12.substring(0, 6)]: {
       [ISA_Zbkb['zip'].funct12.substring(6)]: 'zip',
@@ -2371,6 +2388,10 @@ export const ISA_OP_IMM = {
       [ISA_Zbb['rev8'].funct12.substring(6)]:      'rev8',
       [ISA_Zbb['rev8'].funct12Rv32.substring(6)]:  'rev8',
       [ISA_Zbkb['brev8'].funct12.substring(6)]:    'brev8',
+      // P (unratified)
+      [ISA_P['rev'].funct12.substring(6)]:      'rev',
+      [ISA_P['rev16'].funct12.substring(6)]:    'rev16',
+      [ISA_P['rev.rv32'].funct12.substring(6)]: 'rev.rv32',
     },
     [ISA_Zbkb['unzip'].funct12.substring(0, 6)]: {
       [ISA_Zbkb['unzip'].funct12.substring(6)]: 'unzip',
