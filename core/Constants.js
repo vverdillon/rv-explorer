@@ -1980,6 +1980,10 @@ const ISA_P_OP_IMM = {
   rev:        { isa: 'RV64P',  fmt: 'I-type', funct12: '011010111111', funct3: '101', opcode: OPCODE.OP_IMM },
   rev16:      { isa: 'RV64P',  fmt: 'I-type', funct12: '011010110000', funct3: '101', opcode: OPCODE.OP_IMM },
   'rev.rv32': { isa: 'RV32P',  fmt: 'I-type', funct12: '011010011111', funct3: '101', opcode: OPCODE.OP_IMM },
+  // absw/clsw are abs/cls's word-sized (OP-IMM-32) counterparts, sharing
+  // the exact same funct12 value - only the opcode differs
+  absw:       { isa: 'RV64P',  fmt: 'I-type', funct12: '011000000111', funct3: '001', opcode: OPCODE.OP_IMM_32 },
+  clsw:       { isa: 'RV64P',  fmt: 'I-type', funct12: '011000000011', funct3: '001', opcode: OPCODE.OP_IMM_32 },
 }
 
 // P (packed-SIMD/DSP, unratified/draft) - the bulk of its non-register-pair
@@ -2264,6 +2268,96 @@ export const ISA_OP_32 = {
 }
 Object.assign(ISA_P, ISA_P_OP_IMM);
 
+// P's OP-IMM-32 funct3=010/100 "mixed shape" instructions (real rs2,
+// several zero-extended shift-immediate widths, wide load-immediates with
+// no rs1) - see P_FIELD_POS below and #decodeP/#encodeP in Decoder.js/
+// Encoder.js. Bit positions for the custom fields come from riscv-opcodes'
+// arg_lut.csv (p_w_uimm3=[22,20], p_w_uimm4=[23,20], p_w_uimm5=[24,20],
+// p_w_uimm6=[25,20], p_imm8=[23,16], p_imm10=[24,15]).
+export const P_FIELD_POS = {
+  rd: [11, 7], rs1: [19, 15], rs2: [24, 20],
+  uimm3: [22, 20], uimm4: [23, 20], uimm5: [24, 20], uimm6: [25, 20],
+  imm8: [23, 16], imm10: [24, 15],
+};
+export const P_FIELD_SIGNED = { imm8: true, imm10: true };
+
+function defPMixed(name, isa, matchHex, maskHex, operands) {
+  ISA_P[name] = {
+    isa, fmt: "P-mixed", opcode: OPCODE.OP_IMM_32,
+    match: (parseInt(matchHex, 16) >>> 0).toString(2).padStart(32, "0"),
+    mask: (parseInt(maskHex, 16) >>> 0).toString(2).padStart(32, "0"),
+    operands,
+  };
+}
+defPMixed('padd.bs', 'P', '0x9c00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('padd.hs', 'P', '0x9800201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('padd.ws', 'RV64P', '0x9a00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('pli.b', 'P', '0xb400201b', '0xff00f07f', ['rd', 'imm8']);
+defPMixed('pli.h', 'P', '0xb000201b', '0xfe00707f', ['rd', 'imm10']);
+defPMixed('pli.w', 'RV64P', '0xb200201b', '0xfe00707f', ['rd', 'imm10']);
+defPMixed('plui.h', 'P', '0xf000201b', '0xfe00707f', ['rd', 'imm10']);
+defPMixed('plui.w', 'RV64P', '0xf200201b', '0xfe00707f', ['rd', 'imm10']);
+defPMixed('predsum.bs', 'P', '0x9c00401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('predsum.hs', 'P', '0x9800401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('predsum.ws', 'RV64P', '0x9a00401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('predsumu.bs', 'P', '0xbc00401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('predsumu.hs', 'P', '0xb800401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('predsumu.ws', 'RV64P', '0xba00401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psabs.b', 'P', '0xe470201b', '0xfff0707f', ['rd', 'rs1']);
+defPMixed('psabs.h', 'P', '0xe070201b', '0xfff0707f', ['rd', 'rs1']);
+defPMixed('psati.h', 'P', '0xe100401b', '0xff00707f', ['rd', 'rs1', 'uimm4']);
+defPMixed('psati.w', 'RV64P', '0xe200401b', '0xfe00707f', ['rd', 'rs1', 'uimm5']);
+defPMixed('psext.h.b', 'P', '0xe040201b', '0xfff0707f', ['rd', 'rs1']);
+defPMixed('psext.w.b', 'RV64P', '0xe240201b', '0xfff0707f', ['rd', 'rs1']);
+defPMixed('psext.w.h', 'RV64P', '0xe250201b', '0xfff0707f', ['rd', 'rs1']);
+defPMixed('psll.bs', 'P', '0x8c00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psll.hs', 'P', '0x8800201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psll.ws', 'RV64P', '0x8a00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('pslli.b', 'P', '0x8080201b', '0xff80707f', ['rd', 'rs1', 'uimm3']);
+defPMixed('pslli.h', 'P', '0x8100201b', '0xff00707f', ['rd', 'rs1', 'uimm4']);
+defPMixed('pslli.w', 'RV64P', '0x8200201b', '0xfe00707f', ['rd', 'rs1', 'uimm5']);
+defPMixed('psra.bs', 'P', '0xcc00401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psra.hs', 'P', '0xc800401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psra.ws', 'RV64P', '0xca00401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psrai.b', 'P', '0xc080401b', '0xff80707f', ['rd', 'rs1', 'uimm3']);
+defPMixed('psrai.h', 'P', '0xc100401b', '0xff00707f', ['rd', 'rs1', 'uimm4']);
+defPMixed('psrai.w', 'RV64P', '0xc200401b', '0xfe00707f', ['rd', 'rs1', 'uimm5']);
+defPMixed('psrari.h', 'P', '0xd100401b', '0xff00707f', ['rd', 'rs1', 'uimm4']);
+defPMixed('psrari.w', 'RV64P', '0xd200401b', '0xfe00707f', ['rd', 'rs1', 'uimm5']);
+defPMixed('psrl.bs', 'P', '0x8c00401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psrl.hs', 'P', '0x8800401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psrl.ws', 'RV64P', '0x8a00401b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psrli.b', 'P', '0x8080401b', '0xff80707f', ['rd', 'rs1', 'uimm3']);
+defPMixed('psrli.h', 'P', '0x8100401b', '0xff00707f', ['rd', 'rs1', 'uimm4']);
+defPMixed('psrli.w', 'RV64P', '0x8200401b', '0xfe00707f', ['rd', 'rs1', 'uimm5']);
+defPMixed('pssha.hs', 'P', '0xe800201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('pssha.ws', 'RV64P', '0xea00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psshar.hs', 'P', '0xf800201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psshar.ws', 'RV64P', '0xfa00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psshl.hs', 'P', '0xa800201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psshl.ws', 'RV64P', '0xaa00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psshlr.hs', 'P', '0xb800201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psshlr.ws', 'RV64P', '0xba00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('psslai.h', 'P', '0xd100201b', '0xff00707f', ['rd', 'rs1', 'uimm4']);
+defPMixed('psslai.w', 'RV64P', '0xd200201b', '0xfe00707f', ['rd', 'rs1', 'uimm5']);
+defPMixed('pusati.h', 'P', '0xa100401b', '0xff00707f', ['rd', 'rs1', 'uimm4']);
+defPMixed('pusati.w', 'RV64P', '0xa200401b', '0xfe00707f', ['rd', 'rs1', 'uimm5']);
+defPMixed('sati', 'RV64P', '0xe400401b', '0xfc00707f', ['rd', 'rs1', 'uimm6']);
+defPMixed('sha', 'RV64P', '0xee00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('shar', 'RV64P', '0xfe00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('shl', 'RV64P', '0xae00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('shlr', 'RV64P', '0xbe00201b', '0xfe00707f', ['rd', 'rs1', 'rs2']);
+defPMixed('srari', 'RV64P', '0xd400401b', '0xfc00707f', ['rd', 'rs1', 'uimm6']);
+defPMixed('usati', 'RV64P', '0xa400401b', '0xfc00707f', ['rd', 'rs1', 'uimm6']);
+
+export const ISA_P_MIXED = [];
+for (const [name, e] of Object.entries(ISA_P)) {
+  if (e.fmt === "P-mixed") {
+    ISA_P_MIXED.push({ name, match: e.match, mask: e.mask });
+  }
+}
+
+
 // P's OP-32 packed arithmetic plugs into the same funct7+funct3 dispatch
 // generically, given its scale (245 entries)
 for (const [name, e] of Object.entries(ISA_P)) {
@@ -2409,6 +2503,9 @@ export const ISA_OP_IMM_32 = {
       [ISA_Zbb['clzw'].funct12.substring(6)]:  'clzw',
       [ISA_Zbb['ctzw'].funct12.substring(6)]:  'ctzw',
       [ISA_Zbb['cpopw'].funct12.substring(6)]: 'cpopw',
+      // P (unratified)
+      [ISA_P['absw'].funct12.substring(6)]: 'absw',
+      [ISA_P['clsw'].funct12.substring(6)]: 'clsw',
     },
   },
   // roriw shares this funct3 with srliw/sraiw; keyed by the full 7-bit funct7

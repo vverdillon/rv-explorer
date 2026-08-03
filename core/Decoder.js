@@ -10,6 +10,7 @@ import { BASE, XLEN_MASK, FLI_STRINGS,
   FIELDS, OPCODE, C_OPCODE, REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
   ISA_OP, ISA_OP_32, ISA_OP_64, ISA_OP_BS, ISA_OP_IMM, ISA_OP_IMM_32, ISA_OP_IMM_64,
   ISA_LOAD, ISA_STORE, ISA_BRANCH, ISA_MISC_MEM, ISA_SYSTEM, ISA_AMO, ISA_ZALASR,
+  ISA_P_MIXED, P_FIELD_POS, P_FIELD_SIGNED,
   ISA_LOAD_FP, ISA_STORE_FP, ISA_OP_FP,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
   ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP, ISA_C2_ZCMP,
@@ -113,10 +114,23 @@ export class Decoder {
           this.#decodeLOAD();
           break;
         case OPCODE.OP_IMM:
-        case OPCODE.OP_IMM_32:
         case OPCODE.OP_IMM_64:
           this.#decodeOP_IMM();
           break;
+        case OPCODE.OP_IMM_32: {
+          // P (unratified draft) claims funct3=010/100 on this opcode for a
+          // mix of shapes (real rs2, several zero-extended shift immediate
+          // widths, wide load-immediates with no rs1) that doesn't fit any
+          // existing fmt - no ratified instruction uses these funct3 values
+          // here, so it's safe to check first
+          const f3 = getBits(this.#bin, FIELDS.funct3.pos);
+          if (f3 === '010' || f3 === '100') {
+            this.#decodeP();
+          } else {
+            this.#decodeOP_IMM();
+          }
+          break;
+        }
         case OPCODE.MISC_MEM:
           this.#decodeMISC_MEM();
           break;
@@ -531,6 +545,76 @@ export class Decoder {
 
     // Binary fragments from MSB to LSB
     this.binFrags.push(f['imm'], f['rs1'], f['funct3'], f['rd'], f['opcode']);
+  }
+
+  // P (unratified draft): its OP-IMM-32 funct3=010/100 "pages" mix several
+  // shapes (real rs2, several zero-extended shift-immediate widths, wide
+  // load-immediates with no rs1 at all) that don't fit any single existing
+  // fmt. Rather than hand-deriving a bit-layout dispatch key per shape,
+  // each ISA_P 'P-mixed' entry carries its own precomputed match/mask
+  // (straight from riscv-opcodes/instr_dict.json) plus an ordered list of
+  // operand-type tags; decode is a direct linear match/mask scan, and the
+  // operand tags drive both which bits to render and their assembly order.
+  #decodeP() {
+    const bin = parseInt(this.#bin, BASE.bin);
+    let name, inst;
+    for (const cand of ISA_P_MIXED) {
+      const mask = parseInt(cand.mask, BASE.bin);
+      if ((bin & mask) === (parseInt(cand.match, BASE.bin) & mask)) {
+        name = cand.name;
+        inst = ISA[name];
+        break;
+      }
+    }
+    if (name === undefined) {
+      throw 'Detected P instruction but no matching OP-IMM-32 encoding found';
+    }
+    this.#mne = name;
+
+    // bits[6:0] (opcode) are handled separately; walk bits[31:7] MSB to LSB,
+    // covering both the operand fields (rendered into asm) and whatever's
+    // left over (the instruction's fixed identity bits, shown as raw,
+    // unnamed "unused" fragments for the bit-visualization UI)
+    const opFrag = (opType, hi, lo) => {
+      const raw = this.#bin.substring(31 - hi, 32 - lo);
+      if (opType === 'rd' || opType === 'rs1' || opType === 'rs2') {
+        const reg = decReg(raw);
+        return new Frag(opType === 'rd' ? FRAG.RD : opType === 'rs1' ? FRAG.RS1 : FRAG.RS2,
+          reg, raw, opType);
+      }
+      const imm = decImm(raw, P_FIELD_SIGNED[opType] === true);
+      return new Frag(FRAG.IMM, imm, raw, opType);
+    };
+
+    const segments = []; // { hi, lo, opType? }
+    for (const opType of inst.operands) {
+      segments.push({ ...Object.fromEntries([['hi', P_FIELD_POS[opType][0]], ['lo', P_FIELD_POS[opType][1]]]), opType });
+    }
+    segments.sort((a, b) => b.hi - a.hi);
+    const binFrags = [];
+    let cursor = 31;
+    for (const seg of segments) {
+      if (cursor > seg.hi) {
+        const raw = this.#bin.substring(31 - cursor, 32 - (seg.hi + 1));
+        binFrags.push(new Frag(FRAG.OPC, this.#mne, raw, 'fixed'));
+      }
+      binFrags.push(opFrag(seg.opType, seg.hi, seg.lo));
+      cursor = seg.lo - 1;
+    }
+    if (cursor >= 7) {
+      const raw = this.#bin.substring(31 - cursor, 32 - 7);
+      binFrags.push(new Frag(FRAG.OPC, this.#mne, raw, 'fixed'));
+    }
+
+    const f = Object.fromEntries(binFrags.filter(fr => fr.field !== 'fixed').map(fr => [fr.field, fr]));
+    const opcodeFrag = new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.opcode.name);
+
+    this.asmFrags.push(opcodeFrag);
+    for (const opType of inst.operands) {
+      this.asmFrags.push(f[opType]);
+    }
+
+    this.binFrags.push(...binFrags, opcodeFrag);
   }
 
   /**

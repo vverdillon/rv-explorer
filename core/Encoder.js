@@ -8,7 +8,8 @@
 
 import { BASE, XLEN_MASK, FLI_STRINGS, FIELDS, OPCODE, ISA,
   REGISTER, FLOAT_REGISTER, FLOAT_ROUNDING_MODE, CSR,
-  V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vParseSegName, V_CAT
+  V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vParseSegName, V_CAT,
+  P_FIELD_POS
 } from './Constants.js'
 
 import { COPTS_ISA } from './Config.js'
@@ -211,9 +212,15 @@ export class Encoder {
           this.#encodeLOAD();
           break;
         case OPCODE.OP_IMM:
-        case OPCODE.OP_IMM_32:
         case OPCODE.OP_IMM_64:
           this.#encodeOP_IMM();
+          break;
+        case OPCODE.OP_IMM_32:
+          if (this.#inst.fmt === 'P-mixed') {
+            this.#encodeP();
+          } else {
+            this.#encodeOP_IMM();
+          }
           break;
         case OPCODE.MISC_MEM:
           this.#encodeMISC_MEM();
@@ -351,6 +358,24 @@ export class Encoder {
 
     // Construct binary instruction
     this.bin = imm + rs1 + this.#inst.funct3 + rd + this.#inst.opcode;
+  }
+
+  // P (unratified draft): mirrors Decoder.js's #decodeP - starts from the
+  // instruction's fixed match template (already zero at every operand bit
+  // position) and overwrites each operand's bit range in place
+  #encodeP() {
+    const inst = this.#inst;
+    const bin = inst.match.split('');
+    inst.operands.forEach((opType, i) => {
+      const [hi, lo] = P_FIELD_POS[opType];
+      const raw = (opType === 'rd' || opType === 'rs1' || opType === 'rs2')
+        ? encReg(this.#opr[i])
+        : encImm(this.#opr[i], hi - lo + 1);
+      for (let b = 0; b < raw.length; b++) {
+        bin[31 - hi + b] = raw[b];
+      }
+    });
+    this.bin = bin.join('');
   }
 
   /**
