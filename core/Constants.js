@@ -3093,5 +3093,19 @@ export const ISA_Subsets = {
   Zvknhb: pick(ISA_V, 'vsha2ms.vv', 'vsha2ch.vv', 'vsha2cl.vv'),
   Zvksed: pick(ISA_V, 'vsm4k.vi', 'vsm4r.vv', 'vsm4r.vs'),
   Zvksh: pick(ISA_V, 'vsm3c.vi', 'vsm3me.vv'),
+  // Zvkb: vector crypto bit-manipulation subset, a proper subset of Zvbb
+  Zvkb: pick(ISA_V, 'vandn.vv', 'vandn.vx', 'vbrev8.v', 'vrev8.v',
+    'vrol.vv', 'vrol.vx', 'vror.vv', 'vror.vx', 'vror.vi'),
+  // Zvkn (NIST algorithm suite) composite profile: Zvkb+Zvkned+Zvknhb
+  Zvkn: pick(ISA_V, 'vandn.vv', 'vandn.vx', 'vbrev8.v', 'vrev8.v',
+    'vrol.vv', 'vrol.vx', 'vror.vv', 'vror.vx', 'vror.vi',
+    'vaesef.vs', 'vaesef.vv', 'vaesem.vs', 'vaesem.vv',
+    'vaesdf.vs', 'vaesdf.vv', 'vaesdm.vs', 'vaesdm.vv',
+    'vaeskf1.vi', 'vaeskf2.vi', 'vaesz.vs',
+    'vsha2ms.vv', 'vsha2ch.vv', 'vsha2cl.vv'),
+  // Zvks (ShangMi algorithm suite) composite profile: Zvkb+Zvksed+Zvksh
+  Zvks: pick(ISA_V, 'vandn.vv', 'vandn.vx', 'vbrev8.v', 'vrev8.v',
+    'vrol.vv', 'vrol.vx', 'vror.vv', 'vror.vx', 'vror.vi',
+    'vsm4k.vi', 'vsm4r.vv', 'vsm4r.vs', 'vsm3c.vi', 'vsm3me.vv'),
   System: ISA_System
 }
