@@ -1413,9 +1413,12 @@ export class Decoder {
       f['vd'], f['opcode']);
   }
 
-  // Vector-crypto instructions (Zvkg/Zvkned/Zvknha/Zvknhb/Zvksed/Zvksh):
-  // OP_V_CRYPTO's own opcode (0x77), always-unmasked (vm=1) and single-shape
-  // (funct3=0x2) - see ISA_OP_V_CRYPTO in Constants.js
+  // Vector-crypto instructions (Zvkg/Zvkned/Zvknha/Zvknhb/Zvksed/Zvksh, plus
+  // the unratified draft dot-product family sharing OP_V_CRYPTO's opcode
+  // 0x77): the ratified crypto family is always-unmasked (vm=1) and
+  // single-shape (funct3=0x2), but the draft dot-product instructions use
+  // funct3=0/1 with a real, per-instruction vm bit - see ISA_OP_V_CRYPTO
+  // in Constants.js, nested by funct3 to cover both.
   #decodeVCrypto() {
     const funct6 = getBits(this.#bin, FIELDS.v_funct6.pos),
       vm = getBits(this.#bin, FIELDS.v_vm.pos),
@@ -1424,13 +1427,9 @@ export class Decoder {
       funct3 = getBits(this.#bin, FIELDS.funct3.pos),
       vd = getBits(this.#bin, FIELDS.rd.pos);
 
-    if (vm !== '1') {
-      throw 'Detected OP-V-CRYPTO instruction with invalid vm field';
-    }
-
-    let entry = ISA_OP_V_CRYPTO[funct6];
+    let entry = ISA_OP_V_CRYPTO[funct3]?.[funct6];
     if (entry === undefined) {
-      throw 'Detected OP-V-CRYPTO instruction but invalid funct6 field';
+      throw 'Detected OP-V-CRYPTO instruction but invalid funct3/funct6 field';
     }
     if (typeof entry !== 'string') {
       entry = entry[src1raw];
@@ -1440,6 +1439,10 @@ export class Decoder {
     }
     this.#mne = entry;
     const inst = ISA[this.#mne];
+
+    if (inst.vmFixed !== undefined && vm !== inst.vmFixed) {
+      throw `Detected ${this.#mne} with invalid vm field`;
+    }
 
     const vd_ = decVReg(vd);
     const vs2 = decVReg(vs2raw);
@@ -1463,6 +1466,12 @@ export class Decoder {
       const src1 = decVReg(src1raw);
       f['src1'] = new Frag(FRAG.RS1, src1, src1raw, 'vs1');
       this.asmFrags.push(f['src1']);
+    }
+
+    // vm suffix: only shown when vm is a real, user-controlled bit (the
+    // ratified crypto family fixes it, the draft dot-product family doesn't)
+    if (inst.vmFixed === undefined && vm === '0') {
+      this.asmFrags.push(new Frag(FRAG.UNSD, 'v0.t', vm, FIELDS.v_vm.name));
     }
 
     this.binFrags.push(f['funct6'], f['vm'], f['vs2'], f['src1'], f['funct3'],

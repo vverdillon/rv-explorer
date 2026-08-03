@@ -1816,10 +1816,10 @@ for (const [name, e] of Object.entries({ ...ISA_V, ...ISA_V_UNRATIFIED })) {
 // there's only one shape). vs1 (bits[19:15]) is either a real vector
 // register, a real zimm5 immediate (the .vi forms), or - when a funct6
 // hosts multiple instructions (0x28/0x29) - a fixed selector
-function defVCrypto(isa, funct6hex, name, { vs1Fixed, immType } = {}) {
-  ISA_V[name] = {
+function defVCrypto(isa, funct6hex, name, { vs1Fixed, immType, funct3 = '010', maskedVm = true, target = ISA_V } = {}) {
+  target[name] = {
     isa, fmt: 'V-crypto', opcode: OPCODE.OP_V_CRYPTO, funct6: v6(funct6hex),
-    vs1Fixed, immType,
+    funct3, vmFixed: maskedVm ? '1' : undefined, vs1Fixed, immType,
   };
 }
 
@@ -1848,19 +1848,39 @@ defVCrypto('Zvknha', '2d', 'vsha2ms.vv');
 defVCrypto('Zvknha', '2e', 'vsha2ch.vv');
 defVCrypto('Zvknha', '2f', 'vsha2cl.vv');
 
-// Build the OP_V_CRYPTO dispatch table: keyed by funct6 alone (funct3 and
-// vm are always fixed, so they carry no dispatch information), nested one
-// level further by vs1Fixed only where a funct6 code needs it
-// (0x28/0x29 host several instructions distinguished purely by that field)
+// Unratified draft dot-product family, also on OP_V_CRYPTO's opcode
+// (0x77) but with funct3=0/1 (not the ratified crypto family's fixed
+// 0x2) and a real, per-instruction vm bit (not fixed to 1) - this is why
+// ISA_OP_V_CRYPTO below is nested by funct3 like ISA_OP_V_ARITH, even
+// though every ratified entry above happens to share the same funct3
+defVCrypto('Zvqldot8i', '26', 'vqldotu.vv', { funct3: '000', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvqldot8i', '27', 'vqldots.vv', { funct3: '000', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvqbdot8i', '2e', 'vqbdotu.vv', { funct3: '000', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvqbdot8i', '2f', 'vqbdots.vv', { funct3: '000', maskedVm: false, target: ISA_V_UNRATIFIED });
+
+defVCrypto('Zvfwldot16bf', '24', 'vfwldot.vv', { funct3: '001', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvfqldot8f', '26', 'vfqldot.vv', { funct3: '001', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvfqldot8f', '27', 'vfqldot.alt.vv', { funct3: '001', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvfwbdot16bf', '2c', 'vfwbdot.vv', { funct3: '001', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvfbdot32f', '2b', 'vfbdot.vv', { funct3: '001', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvfqbdot8f', '2e', 'vfqbdot.vv', { funct3: '001', maskedVm: false, target: ISA_V_UNRATIFIED });
+defVCrypto('Zvfqbdot8f', '2f', 'vfqbdot.alt.vv', { funct3: '001', maskedVm: false, target: ISA_V_UNRATIFIED });
+
+// Build the OP_V_CRYPTO dispatch table: nested by funct3 (needed once the
+// unratified dot-product drafts above are included, since they use
+// funct3=0/1 instead of the ratified family's fixed 0x2), then funct6,
+// then vs1Fixed only where a funct6 code needs it (0x28/0x29 host several
+// ratified instructions distinguished purely by that field)
 export const ISA_OP_V_CRYPTO = {};
-for (const [name, e] of Object.entries(ISA_V)) {
+for (const [name, e] of Object.entries({ ...ISA_V, ...ISA_V_UNRATIFIED })) {
   if (e.fmt !== 'V-crypto') {
     continue;
   }
+  const bucket = ISA_OP_V_CRYPTO[e.funct3] ??= {};
   if (e.vs1Fixed !== undefined) {
-    (ISA_OP_V_CRYPTO[e.funct6] ??= {})[e.vs1Fixed] = name;
+    (bucket[e.funct6] ??= {})[e.vs1Fixed] = name;
   } else {
-    ISA_OP_V_CRYPTO[e.funct6] = name;
+    bucket[e.funct6] = name;
   }
 }
 

@@ -733,8 +733,10 @@ export class Encoder {
     const src1 = inst.vs1Fixed !== undefined ? inst.vs1Fixed
       : inst.immType === 'zi' ? encImm(this.#opr[2], 5)
       : encVReg(this.#opr[2]);
+    const numOperands = inst.vs1Fixed !== undefined ? 2 : 3;
+    const vm = inst.vmFixed ?? (this.#opr[numOperands] === 'v0.t' ? '0' : '1');
 
-    this.bin = inst.funct6 + '1' + vs2 + src1 + '010' + vd + inst.opcode;
+    this.bin = inst.funct6 + vm + vs2 + src1 + inst.funct3 + vd + inst.opcode;
   }
 
   // V vector loads/stores: mirrors Decoder.js's #decodeVMem field layout.
