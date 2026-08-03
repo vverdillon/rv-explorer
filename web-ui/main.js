@@ -7,7 +7,7 @@
  */
 
 import { Instruction, convertRegToAbi } from "../core/Instruction.js";
-import { FRAG, ISA_Subsets } from "../core/Constants.js";
+import { FRAG, ISA_Subsets, ISA_UnratifiedSubsets } from "../core/Constants.js";
 import { configDefault, COPTS_ISA } from "../core/Config.js";
 import { buildSearchResults, clearSearchResults, renderSearchResults, iterateSearchResults, getSelectedMnemonic, buildPlaceholder, getPlaceholderString } from "./completion.js";
 
@@ -709,14 +709,15 @@ window.addEventListener("click", (event) => {
 
 // Add ISA to sidebar
 const isaSideBar = document.getElementById("isa-sets-container");
-for (let ISA_Type in ISA_Subsets) {
-  const isaSet = document.createElement("details");
-  const isaSetSummary = document.createElement("summary");
-  isaSetSummary.textContent = ISA_Type;
-  isaSetSummary.classList = "result-row-data";
-  isaSet.appendChild(isaSetSummary);
 
-  for (let inst in ISA_Subsets[ISA_Type]) {
+function buildIsaSetDetails(isaTypeName, isaSet) {
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = isaTypeName;
+  summary.classList = "result-row-data";
+  details.appendChild(summary);
+
+  for (let inst in isaSet) {
     const instNode = document.createElement("button");
     instNode.textContent = inst;
     instNode.classList = "asm-data asm-button";
@@ -724,11 +725,28 @@ for (let ISA_Type in ISA_Subsets) {
       input.value = inst;
       runResult();
     }
-    isaSet.appendChild(instNode);
+    details.appendChild(instNode);
   }
-  
-  isaSideBar.appendChild(isaSet);
+
+  return details;
 }
+
+for (let ISA_Type in ISA_Subsets) {
+  isaSideBar.appendChild(buildIsaSetDetails(ISA_Type, ISA_Subsets[ISA_Type]));
+}
+
+// Unratified/draft extensions get their own clearly-labeled section, kept
+// visually separate from the ratified ISA above so they're never mistaken
+// for finalized, stable instructions
+const unratifiedHeading = document.createElement("div");
+unratifiedHeading.textContent = "Unratified / Draft Extensions";
+unratifiedHeading.classList = "result-row-data isa-unratified-heading";
+isaSideBar.appendChild(unratifiedHeading);
+
+for (let ISA_Type in ISA_UnratifiedSubsets) {
+  isaSideBar.appendChild(buildIsaSetDetails(ISA_Type, ISA_UnratifiedSubsets[ISA_Type]));
+}
+
 isaSideBar.style.display = 'initial';
 
 // Filter ISA extensions / instructions in the sidebar
@@ -738,6 +756,10 @@ isaSearchInput.addEventListener('input', () => {
 
   for (const isaSet of isaSideBar.children) {
     const summary = isaSet.querySelector('summary');
+    if (!summary) {
+      // The "Unratified / Draft Extensions" heading isn't a <details> set
+      continue;
+    }
     const extMatches = summary.textContent.toLowerCase().includes(query);
     let anyInstMatches = false;
 

@@ -3220,3 +3220,28 @@ export const ISA_Subsets = {
     'vsm4k.vi', 'vsm4r.vv', 'vsm4r.vs', 'vsm3c.vi', 'vsm3me.vv'),
   System: ISA_System
 }
+
+// Unratified/draft extensions - kept in a separate export, rendered as
+// its own, clearly-labeled sidebar section (see web-ui/main.js), so
+// they're never confused with the ratified ISA_Subsets above. Sourced
+// from riscv-opcodes' extensions/unratified/ directory; see the ISA_Zbp/
+// ISA_Zalasr/ISA_V_UNRATIFIED definitions above for what's implemented
+// and why (some drafts, or parts of them, are skipped with a reason
+// noted at their definition site).
+export const ISA_UnratifiedSubsets = {
+  Zbp: ISA_Zbp,
+  Zalasr: ISA_Zalasr,
+  Zvzip: pick(ISA_V_UNRATIFIED, 'vunzipe.v', 'vunzipo.v', 'vzip.vv', 'vpaire.vv', 'vpairo.vv'),
+  Zvabd: pick(ISA_V_UNRATIFIED, 'vabs.v', 'vabd.vv', 'vabdu.vv', 'vwabda.vv', 'vwabdau.vv'),
+  Zvdot4a: pick(ISA_V_UNRATIFIED, 'vdot4a.vv', 'vdot4a.vx', 'vdot4au.vv', 'vdot4au.vx',
+    'vdot4asu.vv', 'vdot4asu.vx', 'vdot4aus.vx'),
+  Zvfofp4min: pick(ISA_V_UNRATIFIED, 'vfext.vf2'),
+  Zvfofp8min: pick(ISA_V_UNRATIFIED, 'vfncvt.f.f.q', 'vfncvt.sat.f.f.q', 'vfncvtbf16.sat.f.f.w'),
+  Zvqbdot8i: pick(ISA_V_UNRATIFIED, 'vqbdotu.vv', 'vqbdots.vv'),
+  Zvqldot8i: pick(ISA_V_UNRATIFIED, 'vqldotu.vv', 'vqldots.vv'),
+  Zvfbdot32f: pick(ISA_V_UNRATIFIED, 'vfbdot.vv'),
+  Zvfqbdot8f: pick(ISA_V_UNRATIFIED, 'vfqbdot.vv', 'vfqbdot.alt.vv'),
+  Zvfqldot8f: pick(ISA_V_UNRATIFIED, 'vfqldot.vv', 'vfqldot.alt.vv'),
+  Zvfwbdot16bf: pick(ISA_V_UNRATIFIED, 'vfwbdot.vv'),
+  Zvfwldot16bf: pick(ISA_V_UNRATIFIED, 'vfwldot.vv'),
+}

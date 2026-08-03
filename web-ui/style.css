@@ -159,6 +159,14 @@ body {
     display: none;
 }
 
+.isa-unratified-heading {
+    margin-top: 1em;
+    padding-top: 0.5em;
+    border-top: 1px dashed var(--color-fg);
+    font-style: italic;
+    opacity: 0.75;
+}
+
 .asm-button {
     margin: auto 0;
     height: 1.5rem;
