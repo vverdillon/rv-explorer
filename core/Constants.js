@@ -1736,6 +1736,61 @@ for (const [name, e] of Object.entries(ISA_V)) {
   }
 }
 
+// Vector-crypto instructions (Zvkg/Zvkned/Zvknha/Zvknhb/Zvksed/Zvksh): a
+// completely separate major opcode (0x77) from the rest of V, with a
+// simpler, single-shape layout - vm (bit 25) is always fixed to 1 (no
+// masking) and funct3 is always fixed to 0x2 (not a category selector, as
+// there's only one shape). vs1 (bits[19:15]) is either a real vector
+// register, a real zimm5 immediate (the .vi forms), or - when a funct6
+// hosts multiple instructions (0x28/0x29) - a fixed selector
+function defVCrypto(isa, funct6hex, name, { vs1Fixed, immType } = {}) {
+  ISA_V[name] = {
+    isa, fmt: 'V-crypto', opcode: OPCODE.OP_V_CRYPTO, funct6: v6(funct6hex),
+    vs1Fixed, immType,
+  };
+}
+
+defVCrypto('Zvksh', '20', 'vsm3me.vv');
+defVCrypto('Zvksed', '21', 'vsm4k.vi', { immType: 'zi' });
+defVCrypto('Zvkned', '22', 'vaeskf1.vi', { immType: 'zi' });
+
+defVCrypto('Zvkned', '28', 'vaesdm.vv', { vs1Fixed: '00000' });
+defVCrypto('Zvkned', '28', 'vaesdf.vv', { vs1Fixed: '00001' });
+defVCrypto('Zvkned', '28', 'vaesem.vv', { vs1Fixed: '00010' });
+defVCrypto('Zvkned', '28', 'vaesef.vv', { vs1Fixed: '00011' });
+defVCrypto('Zvksed', '28', 'vsm4r.vv', { vs1Fixed: '10000' });
+defVCrypto('Zvkg', '28', 'vgmul.vv', { vs1Fixed: '10001' });
+
+defVCrypto('Zvkned', '29', 'vaesdm.vs', { vs1Fixed: '00000' });
+defVCrypto('Zvkned', '29', 'vaesdf.vs', { vs1Fixed: '00001' });
+defVCrypto('Zvkned', '29', 'vaesem.vs', { vs1Fixed: '00010' });
+defVCrypto('Zvkned', '29', 'vaesef.vs', { vs1Fixed: '00011' });
+defVCrypto('Zvkned', '29', 'vaesz.vs', { vs1Fixed: '00111' });
+defVCrypto('Zvksed', '29', 'vsm4r.vs', { vs1Fixed: '10000' });
+
+defVCrypto('Zvkned', '2a', 'vaeskf2.vi', { immType: 'zi' });
+defVCrypto('Zvksh', '2b', 'vsm3c.vi', { immType: 'zi' });
+defVCrypto('Zvkg', '2c', 'vghsh.vv');
+defVCrypto('Zvknha', '2d', 'vsha2ms.vv');
+defVCrypto('Zvknha', '2e', 'vsha2ch.vv');
+defVCrypto('Zvknha', '2f', 'vsha2cl.vv');
+
+// Build the OP_V_CRYPTO dispatch table: keyed by funct6 alone (funct3 and
+// vm are always fixed, so they carry no dispatch information), nested one
+// level further by vs1Fixed only where a funct6 code needs it
+// (0x28/0x29 host several instructions distinguished purely by that field)
+export const ISA_OP_V_CRYPTO = {};
+for (const [name, e] of Object.entries(ISA_V)) {
+  if (e.fmt !== 'V-crypto') {
+    continue;
+  }
+  if (e.vs1Fixed !== undefined) {
+    (ISA_OP_V_CRYPTO[e.funct6] ??= {})[e.vs1Fixed] = name;
+  } else {
+    ISA_OP_V_CRYPTO[e.funct6] = name;
+  }
+}
+
 
 // ISA per opcode
 export const ISA_OP = {
@@ -3026,5 +3081,17 @@ export const ISA_Subsets = {
   Zvbc: pick(ISA_V, 'vclmul.vv', 'vclmul.vx', 'vclmulh.vv', 'vclmulh.vx'),
   Zvfbfmin: pick(ISA_V, 'vfwcvtbf16.f.f.v', 'vfncvtbf16.f.f.w'),
   Zvfbfwma: pick(ISA_V, 'vfwmaccbf16.vv', 'vfwmaccbf16.vf'),
+  Zvkg: pick(ISA_V, 'vgmul.vv', 'vghsh.vv'),
+  Zvkned: pick(ISA_V, 'vaesdm.vv', 'vaesdf.vv', 'vaesem.vv', 'vaesef.vv',
+    'vaesdm.vs', 'vaesdf.vs', 'vaesem.vs', 'vaesef.vs', 'vaesz.vs',
+    'vaeskf1.vi', 'vaeskf2.vi'),
+  Zvknha: pick(ISA_V, 'vsha2ms.vv', 'vsha2ch.vv', 'vsha2cl.vv'),
+  // Zvknhb defines no new instructions of its own - it's the same 3
+  // vsha2*.vv mnemonics as Zvknha, just with broadened SEW=64 support (a
+  // semantic distinction this codebase's static encoder/decoder doesn't
+  // model, same as other SEW/xlen variants)
+  Zvknhb: pick(ISA_V, 'vsha2ms.vv', 'vsha2ch.vv', 'vsha2cl.vv'),
+  Zvksed: pick(ISA_V, 'vsm4k.vi', 'vsm4r.vv', 'vsm4r.vs'),
+  Zvksh: pick(ISA_V, 'vsm3c.vi', 'vsm3me.vv'),
   System: ISA_System
 }

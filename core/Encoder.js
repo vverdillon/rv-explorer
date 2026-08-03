@@ -191,6 +191,9 @@ export class Encoder {
         case OPCODE.OP_V:
           this.#encodeOP_V();
           break;
+        case OPCODE.OP_V_CRYPTO:
+          this.#encodeVCrypto();
+          break;
         case OPCODE.AMO:
           this.#encodeAMO();
           break;
@@ -715,6 +718,19 @@ export class Encoder {
     const funct6 = zimm6hi === undefined ? inst.funct6 : inst.funct6.slice(0, 5) + zimm6hi;
 
     this.bin = funct6 + vm + vs2 + src1 + inst.funct3 + vd + inst.opcode;
+  }
+
+  // Vector-crypto instructions: mirrors Decoder.js's #decodeVCrypto field
+  // layout - always-unmasked (vm=1), single-shape (funct3=0x2)
+  #encodeVCrypto() {
+    const inst = this.#inst;
+    const vd = encVReg(this.#opr[0]);
+    const vs2 = encVReg(this.#opr[1]);
+    const src1 = inst.vs1Fixed !== undefined ? inst.vs1Fixed
+      : inst.immType === 'zi' ? encImm(this.#opr[2], 5)
+      : encVReg(this.#opr[2]);
+
+    this.bin = inst.funct6 + '1' + vs2 + src1 + '010' + vd + inst.opcode;
   }
 
   // V vector loads/stores: mirrors Decoder.js's #decodeVMem field layout.

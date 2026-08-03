@@ -14,7 +14,7 @@ import { BASE, XLEN_MASK, FLI_STRINGS,
   ISA_MADD, ISA_MSUB, ISA_NMADD, ISA_NMSUB,
   ISA_C0, ISA_C1, ISA_C2, ISA_C1_MOP, ISA_C2_ZCMP,
   V_SEW, V_LMUL, V_EEW, V_WHOLEREG_NF, vSegName, vParseSegName,
-  V_CAT, ISA_OP_V_ARITH,
+  V_CAT, ISA_OP_V_ARITH, ISA_OP_V_CRYPTO,
   ISA, FRAG
 } from './Constants.js'
 
@@ -92,6 +92,9 @@ export class Decoder {
           break;
         case OPCODE.OP_V:
           this.#decodeOP_V();
+          break;
+        case OPCODE.OP_V_CRYPTO:
+          this.#decodeVCrypto();
           break;
         case OPCODE.AMO:
           this.#decodeAMO();
@@ -1400,6 +1403,62 @@ export class Decoder {
     // one of the vm-disambiguated mnemonic pairs, which fix it already)
     if (inst.vmFixed === undefined && vm === '0') {
       this.asmFrags.push(new Frag(FRAG.UNSD, 'v0.t', vm, FIELDS.v_vm.name));
+    }
+
+    this.binFrags.push(f['funct6'], f['vm'], f['vs2'], f['src1'], f['funct3'],
+      f['vd'], f['opcode']);
+  }
+
+  // Vector-crypto instructions (Zvkg/Zvkned/Zvknha/Zvknhb/Zvksed/Zvksh):
+  // OP_V_CRYPTO's own opcode (0x77), always-unmasked (vm=1) and single-shape
+  // (funct3=0x2) - see ISA_OP_V_CRYPTO in Constants.js
+  #decodeVCrypto() {
+    const funct6 = getBits(this.#bin, FIELDS.v_funct6.pos),
+      vm = getBits(this.#bin, FIELDS.v_vm.pos),
+      vs2raw = getBits(this.#bin, FIELDS.rs2.pos),
+      src1raw = getBits(this.#bin, FIELDS.rs1.pos),
+      funct3 = getBits(this.#bin, FIELDS.funct3.pos),
+      vd = getBits(this.#bin, FIELDS.rd.pos);
+
+    if (vm !== '1') {
+      throw 'Detected OP-V-CRYPTO instruction with invalid vm field';
+    }
+
+    let entry = ISA_OP_V_CRYPTO[funct6];
+    if (entry === undefined) {
+      throw 'Detected OP-V-CRYPTO instruction but invalid funct6 field';
+    }
+    if (typeof entry !== 'string') {
+      entry = entry[src1raw];
+      if (entry === undefined) {
+        throw 'Detected OP-V-CRYPTO instruction but invalid vs1 field';
+      }
+    }
+    this.#mne = entry;
+    const inst = ISA[this.#mne];
+
+    const vd_ = decVReg(vd);
+    const vs2 = decVReg(vs2raw);
+    const f = {
+      opcode: new Frag(FRAG.OPC, this.#mne, this.#opcode, FIELDS.opcode.name),
+      funct6: new Frag(FRAG.OPC, this.#mne, funct6, FIELDS.v_funct6.name),
+      vm:     new Frag(FRAG.OPC, this.#mne, vm, FIELDS.v_vm.name),
+      vs2:    new Frag(FRAG.RS2, vs2, vs2raw, 'vs2'),
+      funct3: new Frag(FRAG.OPC, this.#mne, funct3, FIELDS.funct3.name),
+      vd:     new Frag(FRAG.RD, vd_, vd, 'vd'),
+    };
+    this.asmFrags.push(f['opcode'], f['vd'], f['vs2']);
+
+    if (inst.vs1Fixed !== undefined) {
+      f['src1'] = new Frag(FRAG.UNSD, this.#mne, src1raw, 'vs1');
+    } else if (inst.immType === 'zi') {
+      const imm = decImm(src1raw, false);
+      f['src1'] = new Frag(FRAG.IMM, imm, src1raw, 'zimm5');
+      this.asmFrags.push(f['src1']);
+    } else {
+      const src1 = decVReg(src1raw);
+      f['src1'] = new Frag(FRAG.RS1, src1, src1raw, 'vs1');
+      this.asmFrags.push(f['src1']);
     }
 
     this.binFrags.push(f['funct6'], f['vm'], f['vs2'], f['src1'], f['funct3'],
