@@ -1372,6 +1372,11 @@ export class Decoder {
     } else if (funct3 === V_CAT.FVF) {
       const src1 = decReg(src1raw, true);
       f['src1'] = new Frag(FRAG.RS1, src1, src1raw, 'fs1');
+    } else if (inst.immType === 'zi6') {
+      // vror.vi: 6-bit zero-extended immediate, split across the funct6
+      // LSB ("zimm6hi", bit 26) and this 5-bit field ("zimm6lo")
+      const imm = decImm(funct6[5] + src1raw, false);
+      f['src1'] = new Frag(FRAG.IMM, imm, src1raw, 'zimm6lo');
     } else {
       // IVI: sign- or zero-extended 5-bit immediate, depending on this
       // mnemonic (shift amounts/gather index are zero-extended)

@@ -678,6 +678,10 @@ export class Encoder {
       : encVReg(this.#opr[0]);
     let next = 1;
 
+    // vror.vi's 6-bit immediate splits across the funct6 LSB ("zimm6hi")
+    // and the usual 5-bit field ("zimm6lo") - readSrc1 reports the lo bits
+    // and stashes the hi bit here to fold into funct6 below
+    let zimm6hi;
     const readVs2 = () => inst.vs2Fixed !== undefined ? inst.vs2Fixed : encVReg(this.#opr[next++]);
     const readSrc1 = () => {
       if (inst.vs1Fixed !== undefined) {
@@ -688,6 +692,10 @@ export class Encoder {
         return encReg(this.#opr[next++]);
       } else if (inst.funct3 === V_CAT.FVF) {
         return encReg(this.#opr[next++], true);
+      } else if (inst.immType === 'zi6') {
+        const imm6 = encImm(this.#opr[next++], 6);
+        zimm6hi = imm6[0];
+        return imm6.slice(1);
       }
       return encImm(this.#opr[next++], 5);
     };
@@ -704,8 +712,9 @@ export class Encoder {
     }
 
     const vm = inst.vmFixed ?? (this.#opr[next] === 'v0.t' ? '0' : '1');
+    const funct6 = zimm6hi === undefined ? inst.funct6 : inst.funct6.slice(0, 5) + zimm6hi;
 
-    this.bin = inst.funct6 + vm + vs2 + src1 + inst.funct3 + vd + inst.opcode;
+    this.bin = funct6 + vm + vs2 + src1 + inst.funct3 + vd + inst.opcode;
   }
 
   // V vector loads/stores: mirrors Decoder.js's #decodeVMem field layout.

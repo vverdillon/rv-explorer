@@ -259,6 +259,7 @@ export const OPCODE = {
   NMADD:    '1001111',
   OP_FP:    '1010011',
   OP_V:     '1010111',
+  OP_V_CRYPTO: '1110111',
   OP_IMM_64:'1011011',
   BRANCH:   '1100011',
   JALR:     '1100111',
@@ -1679,6 +1680,40 @@ for (const [name, sel] of Object.entries(V_FSQRT)) {
   ISA_V[name] = { isa: 'V', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('13'), funct3: V_CAT.FVV, vs1Fixed: sel };
 }
 
+// Zvbb (vector bit-manipulation for crypto) / Zvbc (carryless multiply) -
+// same OP_V opcode and dispatch shape as the base V arithmetic family above
+defVArith('01', 'vandn', 'vx');
+
+const V_BB_UNARY = {
+  'vbrev8.v': '01000', 'vrev8.v': '01001', 'vbrev.v': '01010',
+  'vclz.v': '01100', 'vctz.v': '01101', 'vcpop.v': '01110',
+};
+for (const [name, sel] of Object.entries(V_BB_UNARY)) {
+  ISA_V[name] = { isa: 'Zvbb', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.MVV, vs1Fixed: sel };
+}
+
+defVArith('15', 'vrol', 'vx');
+defVArith('14', 'vror', 'vx');
+// vror.vi's shift amount is a 6-bit immediate, split across the funct6 LSB
+// (bit 26, "zimm6hi") and the usual 5-bit vs1/imm position ("zimm6lo") -
+// registered under both funct6 values (0x14/0x15) since that bit is baked
+// into the dispatch key; see the immType==='zi6' special case below
+ISA_V['vror.vi'] = { isa: 'Zvbb', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('14'), funct3: V_CAT.IVI, immType: 'zi6' };
+
+defVArith('35', 'vwsll', 'vxi', { immType: 'zi' });
+
+defVArith('0c', 'vclmul', 'vx', { cats: MV_CATS });
+defVArith('0d', 'vclmulh', 'vx', { cats: MV_CATS });
+
+// Zvfbfmin (BF16 vector conversions) - funct6=0x12 FVV bucket, dispatched
+// by vs1 alongside the existing int<->float conversion family
+ISA_V['vfwcvtbf16.f.f.v'] = { isa: 'Zvfbfmin', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.FVV, vs1Fixed: '01101' };
+ISA_V['vfncvtbf16.f.f.w'] = { isa: 'Zvfbfmin', fmt: 'V-arith', opcode: OPCODE.OP_V, funct6: v6('12'), funct3: V_CAT.FVV, vs1Fixed: '11101' };
+
+// Zvfbfwma (BF16 widening multiply-accumulate) - same (vd, vs1/rs1, vs2)
+// swapped order as the rest of the multiply-accumulate family
+defVArith('3b', 'vfwmaccbf16', 'vf', { cats: FV_CATS, swap: true });
+
 // Build the funct3 -> funct6 -> mnemonic dispatch table (nested one level
 // further, by vm or vs1Fixed, only where a funct6 code needs it)
 export const ISA_OP_V_ARITH = {};
@@ -1693,6 +1728,11 @@ for (const [name, e] of Object.entries(ISA_V)) {
     (bucket[e.funct6] ??= {})[e.vmFixed] = name;
   } else {
     bucket[e.funct6] = name;
+  }
+  // vror.vi's "zimm6hi" bit lives at the funct6 LSB, so the same mnemonic
+  // must resolve from both funct6 values (bit=0 and bit=1)
+  if (e.immType === 'zi6') {
+    bucket[e.funct6.slice(0, 5) + (e.funct6[5] === '0' ? '1' : '0')] = name;
   }
 }
 
@@ -2980,5 +3020,11 @@ export const ISA_Subsets = {
   Sdext: ISA_Sdext,
   Ssctr: ISA_Ssctr,
   V: ISA_V,
+  Zvbb: pick(ISA_V, 'vandn.vv', 'vandn.vx', 'vbrev8.v', 'vrev8.v', 'vbrev.v',
+    'vclz.v', 'vctz.v', 'vcpop.v', 'vrol.vv', 'vrol.vx', 'vror.vv', 'vror.vx',
+    'vror.vi', 'vwsll.vv', 'vwsll.vx', 'vwsll.vi'),
+  Zvbc: pick(ISA_V, 'vclmul.vv', 'vclmul.vx', 'vclmulh.vv', 'vclmulh.vx'),
+  Zvfbfmin: pick(ISA_V, 'vfwcvtbf16.f.f.v', 'vfncvtbf16.f.f.w'),
+  Zvfbfwma: pick(ISA_V, 'vfwmaccbf16.vv', 'vfwmaccbf16.vf'),
   System: ISA_System
 }
