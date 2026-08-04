@@ -480,6 +480,11 @@ export class Encoder {
 
       // Convert to binary representation
       rd = encReg(dest);
+      if (rd === '00000') {
+        // rd=x0 in this encoding space is reserved for Zicbo cache-block
+        // instructions (defined or not), so lq requires a real destination
+        throw `Detected lq with rd=x0 - this encoding is reserved for Zicbo cache-block instructions`;
+      }
       imm = encImm(offset, FIELDS.i_imm_11_0.pos[1]);
       rs1 = encReg(base);
 

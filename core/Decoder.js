@@ -874,12 +874,18 @@ export class Decoder {
       throw "Detected MISC-MEM instruction but invalid funct3 field";
     }
     if (typeof this.#mne !== 'string') {
-      // This funct3 is shared between RV128I's lq (variable imm, rd can be
-      // any register) and the Zicbo cache-block instructions (fixed imm,
-      // rd fixed to 0, rs1-only). rd=0 is required for Zicbo, so any
-      // non-zero rd is unambiguously lq; only consult the imm-keyed Zicbo
-      // table when rd=0, and still default to lq if nothing matches there
-      this.#mne = rd === '00000' ? (this.#mne[imm] ?? 'lq') : 'lq';
+      // This funct3 is shared between RV128I's lq (variable imm, rd must be
+      // non-zero) and the Zicbo cache-block instructions (fixed imm, rd
+      // fixed to 0, rs1-only). The entire rd=0 space in this encoding is
+      // reserved for Zicbo (defined or not) - a real lq requires rd != 0
+      if (rd === '00000') {
+        this.#mne = this.#mne[imm];
+        if (this.#mne === undefined) {
+          throw "Detected reserved Zicbo cache-block encoding (rd=x0) with unknown funct12";
+        }
+      } else {
+        this.#mne = 'lq';
+      }
     }
     // Signals when MISC-MEM used as extended encoding space for load operations
     let loadExt = this.#mne === 'lq';
