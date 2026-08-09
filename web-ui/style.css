@@ -44,6 +44,24 @@
     }
 }
 
+:root[data-theme="light"] {
+    --color-fg: var(--color-base00);
+    --color-bg: var(--color-base3);
+    --color-hl: var(--color-base2);
+    --color-em: var(--color-base01);
+    --color-co: var(--color-base1);
+    --color-fd: var(--color-base2);
+}
+
+:root[data-theme="dark"] {
+    --color-fg: var(--color-base2);
+    --color-bg: var(--color-base03);
+    --color-hl: var(--color-base02);
+    --color-em: var(--color-base1);
+    --color-co: var(--color-base0);
+    --color-fd: var(--color-base01);
+}
+
 ::placeholder {
     color: var(--color-fg);
 }
@@ -681,8 +699,8 @@ body {
     right: 0;
     bottom: 0;
     background-color: var(--color-fg);
-    -webkit-transition: .3s;
-    transition: .3s;
+    -webkit-transition: 0.3s;
+    transition: 0.3s;
 }
 
 .slider:before {
@@ -693,8 +711,8 @@ body {
     left: 3px;
     bottom: 2px;
     background-color: var(--color-bg);
-    -webkit-transition: .3s;
-    transition: .3s;
+    -webkit-transition: 0.3s;
+    transition: 0.3s;
 }
 
 input:checked+.slider {
@@ -734,4 +752,88 @@ a:visited {
 
 #sidebar details>summary:hover {
     color: var(--color-co);
+}
+
+/* Theme container */
+#theme-container {
+    top: 2ch;
+    right: 2ch;
+    position: fixed;
+    background-color: var(--color-bg);
+    padding: 0ch 1ch 0ch 1ch;
+    border: 1px solid var(--color-fg);
+    border-radius: 5px;
+    min-width: 16ch;
+    z-index: 20;
+    height: 3.5ch;
+}
+
+#theme-status-row {
+    display: grid;
+    grid-template-columns: 1fr 2ch;
+    align-items: center;
+    column-gap: 0.8ch;
+    min-height: 2ch;
+}
+
+#theme-current {
+    position: relative;
+    border: none;
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: transparent;
+    color: var(--color-em);
+    font-family: inherit;
+    margin-top: 1ch;
+}
+
+#theme-parameter-button {
+    background-color: inherit;
+    border: none;
+    background: url("./assets/gear-icon.svg") no-repeat center;
+    cursor: pointer;
+    height: 100%;
+}
+
+#theme-modal-container {
+    display: none;
+    position: fixed;
+    z-index: 101;
+    left: 0;
+    padding-top: 18vh;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+#theme-parameter-container {
+    position: relative;
+    background-color: var(--color-bg);
+    margin: auto;
+    padding: 10px;
+    border: 1px solid var(--color-fg);
+    border-radius: 5px;
+    width: 220px;
+}
+
+#theme-close {
+    color: var(--color-em);
+    position: absolute;
+    bottom: 20px;
+    right: 15px;
+    font-size: 25px;
+}
+
+#theme-close:hover {
+    color: var(--color-yellow);
+    cursor: pointer;
+}
+
+@media (max-width: 480px) {
+    #theme-container {
+        right: 0.5ch;
+    }
 }

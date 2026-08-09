@@ -257,6 +257,7 @@ function hashChange(hash) {
   // Close search results and config popup, then execute the input
   searchResults.toggleAttribute('hidden', true);
   modalDiv.style.display = "none";
+  themeModalDiv.style.display = "none";
   runResult(false);
 }
 
@@ -664,6 +665,57 @@ const modalDiv = document.getElementById("modal-container");
 const parameterBtn = document.getElementById("parameter-button");
 const closeBtn = document.getElementById('close');
 const isaMenu = document.getElementById('isa');
+const themeModalDiv = document.getElementById('theme-modal-container');
+const themeParameterBtn = document.getElementById('theme-parameter-button');
+const themeCloseBtn = document.getElementById('theme-close');
+const themeToggle = document.getElementById('theme');
+const themeCurrent = document.getElementById('theme-current');
+const THEME_STORAGE_KEY = 'rv-explorer-theme';
+
+function getSystemTheme() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function getSavedTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  return (savedTheme === 'dark' || savedTheme === 'light') ? savedTheme : null;
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeToggle.checked = (theme === 'dark');
+  themeCurrent.textContent = (theme === 'dark') ? 'Dark' : 'Light';
+}
+
+function initializeTheme() {
+  applyTheme(getSavedTheme() ?? getSystemTheme());
+}
+
+initializeTheme();
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (getSavedTheme() === null) {
+    applyTheme(getSystemTheme());
+  }
+});
+
+themeToggle.addEventListener('change', () => {
+  const theme = themeToggle.checked ? 'dark' : 'light';
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  applyTheme(theme);
+});
+
+themeParameterBtn.addEventListener('click', () => {
+  themeModalDiv.style.display = 'block';
+});
+
+function closeThemeModal() {
+  themeModalDiv.style.display = 'none';
+}
+
+themeCloseBtn.addEventListener('click', () => {
+  closeThemeModal();
+});
 
 // Add ISA option based on Config.js provides
 for (let option in COPTS_ISA) {
@@ -703,6 +755,9 @@ closeBtn.addEventListener("click", () => {
 window.addEventListener("click", (event) => {
     if (event.target == modalDiv) {
       updateParameter();
+    }
+    if (event.target == themeModalDiv) {
+      closeThemeModal();
     }
   }
 )
